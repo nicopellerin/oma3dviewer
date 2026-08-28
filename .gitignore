@@ -1,0 +1,7 @@
+/build/
+/compile_commands.json
+/pkgbuild/pkg/
+/pkgbuild/src/
+/pkgbuild/*.pkg.tar.*
+*.pro.user
+*.swp

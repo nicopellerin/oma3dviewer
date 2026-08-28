@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>Main.qml</file>
+        <file>Preview.qml</file>
+        <file>RailButton.qml</file>
+        <file>ViewerViewport.qml</file>
+    </qresource>
+</RCC>

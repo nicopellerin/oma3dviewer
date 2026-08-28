@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Omaviewer
+GenericName=3D Model Viewer
+Comment=Preview GLB, glTF, FBX, and OBJ models
+Exec=omaviewer %f
+Icon=omaviewer
+Terminal=false
+Categories=Graphics;3DGraphics;Viewer;
+MimeType=model/gltf-binary;model/gltf+json;model/obj;model/x-fbx;
+Keywords=3d;model;viewer;glb;gltf;fbx;obj;
+StartupWMClass=omaviewer
+

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+build_dir="${OMAVIEWER_BUILD_DIR:-$repo_root/build}"
+jobs="${OMAVIEWER_BUILD_JOBS:-$(nproc)}"
+
+if ! command -v qmake6 >/dev/null 2>&1; then
+  echo "qmake6 is required. Install qt6-base first." >&2
+  exit 1
+fi
+
+mkdir -p "$build_dir"
+cd "$build_dir"
+qmake6 "$repo_root/omaviewer.pro"
+make -j"$jobs"
+
+echo "Built $build_dir/omaviewer"
+

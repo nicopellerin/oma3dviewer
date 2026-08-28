@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="model/gltf-binary">
+    <comment>Binary glTF model</comment>
+    <glob weight="80" pattern="*.glb"/>
+    <glob weight="80" pattern="*.GLB"/>
+  </mime-type>
+  <mime-type type="model/gltf+json">
+    <comment>glTF model</comment>
+    <glob weight="80" pattern="*.gltf"/>
+    <glob weight="80" pattern="*.GLTF"/>
+  </mime-type>
+  <mime-type type="model/obj">
+    <comment>Wavefront OBJ model</comment>
+    <glob weight="80" pattern="*.obj"/>
+    <glob weight="80" pattern="*.OBJ"/>
+  </mime-type>
+  <mime-type type="model/x-fbx">
+    <comment>Autodesk FBX model</comment>
+    <glob weight="80" pattern="*.fbx"/>
+    <glob weight="80" pattern="*.FBX"/>
+  </mime-type>
+</mime-info>
