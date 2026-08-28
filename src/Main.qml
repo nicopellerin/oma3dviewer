@@ -13,8 +13,8 @@ ApplicationWindow {
     minimumWidth: 720
     minimumHeight: 480
     visible: true
-    title: backend.displayName === "" ? "omaviewer"
-                                      : backend.displayName + " — omaviewer"
+    title: backend.displayName === "" ? "omagltf"
+                                      : backend.displayName + " — omagltf"
     color: systemTheme.pageColor
 
     Material.theme: systemTheme.darkMode ? Material.Dark : Material.Light
@@ -112,7 +112,7 @@ ApplicationWindow {
                 spacing: 12
 
                 Text {
-                    text: "OMAVIEWER"
+                    text: "OMAGLTF"
                     color: systemTheme.inkColor
                     font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 12

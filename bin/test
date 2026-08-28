@@ -6,20 +6,20 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 bash -n "$repo_root/bin/build" "$repo_root/bin/run" "$repo_root/bin/install"
 
 if command -v desktop-file-validate >/dev/null 2>&1; then
-  desktop-file-validate "$repo_root/pkgbuild/omaviewer.desktop"
+  desktop-file-validate "$repo_root/pkgbuild/omagltf.desktop"
 fi
 
 if command -v xmllint >/dev/null 2>&1; then
   xmllint --noout "$repo_root/src/resources.qrc"
-  xmllint --noout "$repo_root/pkgbuild/omaviewer-mime.xml"
-  xmllint --noout "$repo_root/pkgbuild/omaviewer.svg"
+  xmllint --noout "$repo_root/pkgbuild/omagltf-mime.xml"
+  xmllint --noout "$repo_root/pkgbuild/omagltf.svg"
 fi
 
 if command -v node >/dev/null 2>&1; then
-  node --check "$repo_root/sushi/omaviewer.js"
+  node --check "$repo_root/sushi/omagltf.js"
 fi
 
-test -s "$repo_root/sushi/omaviewer.js"
+test -s "$repo_root/sushi/omagltf.js"
 
 if command -v qmlformat >/dev/null 2>&1; then
   for qml_file in "$repo_root"/src/*.qml; do

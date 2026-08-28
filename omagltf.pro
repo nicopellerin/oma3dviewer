@@ -2,7 +2,7 @@ QT += core dbus gui network qml quick quickcontrols2 quickdialogs2 quick3d
 
 CONFIG += c++17 release
 
-TARGET = omaviewer
+TARGET = omagltf
 TEMPLATE = app
 
 HEADERS += \

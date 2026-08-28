@@ -5,7 +5,7 @@ const {Gio, GLib, GObject, Gtk} = imports.gi;
 const Renderer = imports.ui.renderer;
 
 const DEVELOPMENT_EXECUTABLE =
-    '/home/nico/Desktop/code/omaviewer/build/omaviewer';
+    '/home/nico/Desktop/code/omagltf/build/omagltf';
 
 let activeRenderers = 0;
 let closeSourceId = 0;
@@ -15,7 +15,7 @@ let navigationBridge = null;
 
 const NAVIGATION_BRIDGE_XML = `
 <node>
-  <interface name="io.nicopellerin.OmaviewerBridge">
+  <interface name="io.nicopellerin.OmagltfBridge">
     <method name="Select">
       <arg type="u" name="direction" direction="in"/>
     </method>
@@ -40,11 +40,11 @@ function ensureNavigationBridge() {
         NAVIGATION_BRIDGE_XML, implementation);
     navigationBridge.export(
         Gio.DBus.session,
-        '/org/gnome/NautilusPreviewer/OmaviewerBridge');
+        '/org/gnome/NautilusPreviewer/OmagltfBridge');
 }
 
 function executablePath() {
-    const installedExecutable = GLib.find_program_in_path('omaviewer');
+    const installedExecutable = GLib.find_program_in_path('omagltf');
     if (installedExecutable)
         return installedExecutable;
     if (GLib.file_test(
@@ -65,7 +65,7 @@ function invokePreview(arguments_) {
                 Gio.SubprocessFlags.STDERR_SILENCE);
         return true;
     } catch (error) {
-        logError(error, 'Could not launch the Omaviewer live preview');
+        logError(error, 'Could not launch the Omagltf live preview');
         return false;
     }
 }
@@ -128,7 +128,7 @@ var Klass = GObject.registerClass({
         ready: GObject.ParamSpec.boolean(
             'ready', '', '', GObject.ParamFlags.READABLE, false),
     },
-}, class OmaviewerRenderer extends Gtk.DrawingArea {
+}, class OmagltfRenderer extends Gtk.DrawingArea {
     get ready() {
         return !!this._ready;
     }
@@ -168,7 +168,7 @@ var Klass = GObject.registerClass({
 
         const sourcePath = file.get_path();
         if (!sourcePath || !invokePreview(['--preview', sourcePath])) {
-            log('Omaviewer live preview requires a local model and executable.');
+            log('Omagltf live preview requires a local model and executable.');
             this.isReady();
             return;
         }

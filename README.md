@@ -1,6 +1,6 @@
-# Omaviewer
+# Omagltf
 
-A focused 3D model viewer for Omarchy. Omaviewer opens GLB, glTF, and OBJ
+A focused 3D model viewer for Omarchy. Omagltf opens GLB, glTF, and OBJ
 assets directly through Qt Quick 3D. FBX files are converted to a temporary
 GLB with Assimp, then loaded through the same rendering path.
 
@@ -31,7 +31,7 @@ omarchy pkg add qt6-base qt6-declarative qt6-quick3d assimp sushi
 ./bin/run path/to/model.glb
 ```
 
-The build produces a single executable at `build/omaviewer`; its QML interface
+The build produces a single executable at `build/omagltf`; its QML interface
 is embedded through Qt resources.
 
 ## Controls
@@ -49,7 +49,7 @@ is embedded through Qt resources.
 
 Press Space on a supported model in Nautilus to open a compact live Qt Quick 3D
 preview. The preview does not take keyboard focus, so the arrow keys continue
-to navigate files through Sushi and Nautilus. Use "Open With Omaviewer" for
+to navigate files through Sushi and Nautilus. Use "Open With Omagltf" for
 orbit, pan, zoom, grid, axes, and file controls.
 
 ## Test
@@ -78,7 +78,7 @@ GLB / glTF / OBJ -------------------+
                                     +--> RuntimeLoader --> View3D
 FBX --> Assimp subprocess --> GLB --+
 
-Nautilus Space --> Sushi navigation bridge --> omaviewer --preview --> View3D
+Nautilus Space --> Sushi navigation bridge --> omagltf --preview --> View3D
 ```
 
 The QML side owns presentation and camera interaction. The C++ backend owns
@@ -93,6 +93,6 @@ capturing or caching a PNG. Non-model files continue to use Sushi normally.
 
 ## License
 
-Omaviewer is MIT licensed. The bundled JetBrains Mono Nerd Font is distributed
+Omagltf is MIT licensed. The bundled JetBrains Mono Nerd Font is distributed
 under the SIL Open Font License 1.1; see
 `THIRD_PARTY_LICENSES/JetBrainsMonoNerd-OFL.txt`.

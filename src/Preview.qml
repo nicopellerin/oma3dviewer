@@ -15,7 +15,7 @@ Window {
     maximumHeight: 480
     visible: true
     color: systemTheme.stageColor
-    title: backend.fileName === "" ? "Omaviewer preview" : backend.fileName
+    title: backend.fileName === "" ? "Omagltf preview" : backend.fileName
     flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus
            | Qt.WindowStaysOnTopHint
 
@@ -115,7 +115,7 @@ Window {
                     }
 
                     RailButton {
-                        text: "OPEN WITH OMAVIEWER"
+                        text: "OPEN WITH OMAGLTF"
                         focusPolicy: Qt.NoFocus
                         outlined: true
                         inkColor: systemTheme.inkColor

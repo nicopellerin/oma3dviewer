@@ -87,7 +87,7 @@ void Backend::openFullViewer() {
 
     if (!QProcess::startDetached(QCoreApplication::applicationFilePath(),
                                  {m_sourcePath})) {
-        setError(QStringLiteral("Could not open the full Omaviewer window."));
+        setError(QStringLiteral("Could not open the full Omagltf window."));
         return;
     }
     closePreview();
@@ -110,8 +110,8 @@ void Backend::navigatePreview(int direction) {
 
     QDBusMessage message = QDBusMessage::createMethodCall(
         QStringLiteral("org.gnome.NautilusPreviewer"),
-        QStringLiteral("/org/gnome/NautilusPreviewer/OmaviewerBridge"),
-        QStringLiteral("io.nicopellerin.OmaviewerBridge"),
+        QStringLiteral("/org/gnome/NautilusPreviewer/OmagltfBridge"),
+        QStringLiteral("io.nicopellerin.OmagltfBridge"),
         QStringLiteral("Select"));
     message << QVariant::fromValue(static_cast<quint32>(direction));
     QDBusConnection::sessionBus().send(message);
@@ -119,7 +119,7 @@ void Backend::navigatePreview(int direction) {
 
 void Backend::openFile(const QUrl &url) {
     if (!url.isLocalFile()) {
-        setError(QStringLiteral("Omaviewer can only open local model files."));
+        setError(QStringLiteral("Omagltf can only open local model files."));
         return;
     }
     openPath(url.toLocalFile());
@@ -273,7 +273,7 @@ void Backend::startFbxConversion(const QString &sourcePath) {
     }
 
     m_conversionDirectory = std::make_unique<QTemporaryDir>(
-        QDir::tempPath() + QStringLiteral("/omaviewer-XXXXXX"));
+        QDir::tempPath() + QStringLiteral("/omagltf-XXXXXX"));
     if (!m_conversionDirectory->isValid()) {
         setError(QStringLiteral("Could not create a temporary directory for FBX conversion."));
         setStatusText(QStringLiteral("Conversion failed"));
