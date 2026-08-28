@@ -114,7 +114,7 @@ ApplicationWindow {
                 Text {
                     text: "OMAVIEWER"
                     color: systemTheme.inkColor
-                    font.family: "monospace"
+                    font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 12
                     font.weight: Font.Bold
                     font.letterSpacing: 1.6
@@ -228,7 +228,7 @@ ApplicationWindow {
                     anchors.centerIn: parent
                     text: "DROP TO OPEN"
                     color: systemTheme.accentColor
-                    font.family: "monospace"
+                    font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 13
                     font.weight: Font.Bold
                     font.letterSpacing: 1.5
@@ -259,7 +259,7 @@ ApplicationWindow {
                         anchors.centerIn: parent
                         text: "XYZ"
                         color: systemTheme.accentColor
-                        font.family: "monospace"
+                        font.family: "JetBrainsMono Nerd Font"
                         font.pixelSize: 11
                         font.weight: Font.Bold
                         font.letterSpacing: 1
@@ -280,7 +280,7 @@ ApplicationWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "GLB  ·  GLTF  ·  OBJ  ·  FBX"
                     color: systemTheme.mutedColor
-                    font.family: "monospace"
+                    font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 10
                     font.letterSpacing: 1
                     renderType: Text.NativeRendering
@@ -313,10 +313,45 @@ ApplicationWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: backend.statusText
                     color: systemTheme.inkColor
-                    font.family: "monospace"
+                    font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 11
                     font.letterSpacing: 0.8
                     renderType: Text.NativeRendering
+                }
+            }
+
+            Row {
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.rightMargin: 18
+                anchors.bottomMargin: stage.width < 900 ? 36 : 14
+                visible: viewport.loaded && backend.modelStatsAvailable
+                         && win.visibleError === ""
+                spacing: 18
+
+                property color statsColor: Qt.rgba(systemTheme.inkColor.r,
+                                                    systemTheme.inkColor.g,
+                                                    systemTheme.inkColor.b, 0.48)
+
+                BottomLabelPair {
+                    keyText: "MESHES"
+                    valueText: Number(backend.meshCount).toLocaleString(
+                                   Qt.locale("en_US"), "f", 0)
+                    textColor: parent.statsColor
+                }
+
+                BottomLabelPair {
+                    keyText: "VERTICES"
+                    valueText: Number(backend.vertexCount).toLocaleString(
+                                   Qt.locale("en_US"), "f", 0)
+                    textColor: parent.statsColor
+                }
+
+                BottomLabelPair {
+                    keyText: "TRIANGLES"
+                    valueText: Number(backend.triangleCount).toLocaleString(
+                                   Qt.locale("en_US"), "f", 0)
+                    textColor: parent.statsColor
                 }
             }
 
@@ -342,7 +377,7 @@ ApplicationWindow {
                     Text {
                         text: "LOAD ERROR"
                         color: systemTheme.errorColor
-                        font.family: "monospace"
+                        font.family: "JetBrainsMono Nerd Font"
                         font.pixelSize: 10
                         font.weight: Font.Bold
                         font.letterSpacing: 1

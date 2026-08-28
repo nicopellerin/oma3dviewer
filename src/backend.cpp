@@ -20,6 +20,7 @@ Backend::Backend(QObject *parent)
     : QObject(parent) {}
 
 Backend::~Backend() {
+    cancelModelStatistics();
     cancelConversion();
 }
 
@@ -104,7 +105,7 @@ void Backend::closePreview() {
 }
 
 void Backend::navigatePreview(int direction) {
-    if (direction < 0 || direction > 65535)
+    if (direction < 0)
         return;
 
     QDBusMessage message = QDBusMessage::createMethodCall(
@@ -112,7 +113,7 @@ void Backend::navigatePreview(int direction) {
         QStringLiteral("/org/gnome/NautilusPreviewer/OmaviewerBridge"),
         QStringLiteral("io.nicopellerin.OmaviewerBridge"),
         QStringLiteral("Select"));
-    message << QVariant::fromValue(static_cast<quint16>(direction));
+    message << QVariant::fromValue(static_cast<quint32>(direction));
     QDBusConnection::sessionBus().send(message);
 }
 
@@ -138,18 +139,129 @@ void Backend::openPath(const QString &path) {
     }
 
     cancelConversion();
+    cancelModelStatistics();
+    resetModelStatistics();
     clearError();
     setModelUrl({});
 
     if (suffix == QStringLiteral("fbx")) {
         updateFileInfo(info.absoluteFilePath(), QStringLiteral("FBX"));
+        startModelStatistics(info.absoluteFilePath());
         startFbxConversion(info.absoluteFilePath());
         return;
     }
 
     updateFileInfo(info.absoluteFilePath(), suffix.toUpper());
+    startModelStatistics(info.absoluteFilePath());
     setModelUrl(QUrl::fromLocalFile(info.absoluteFilePath()));
     setStatusText(QStringLiteral("Loaded"));
+}
+
+void Backend::startModelStatistics(const QString &sourcePath) {
+    const QString assimp = QStandardPaths::findExecutable(QStringLiteral("assimp"));
+    if (assimp.isEmpty())
+        return;
+
+    auto *probe = new QProcess(this);
+    m_statsProbe = probe;
+
+    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+    environment.insert(QStringLiteral("LC_ALL"), QStringLiteral("C"));
+    probe->setProcessEnvironment(environment);
+    probe->setProcessChannelMode(QProcess::MergedChannels);
+
+    connect(probe, &QProcess::errorOccurred, this,
+            [this, probe](QProcess::ProcessError error) {
+        if (error != QProcess::FailedToStart || m_statsProbe != probe)
+            return;
+
+        m_statsProbe = nullptr;
+        probe->deleteLater();
+    });
+
+    connect(probe,
+            qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+            [this, probe](int exitCode, QProcess::ExitStatus exitStatus) {
+        if (m_statsProbe != probe) {
+            probe->deleteLater();
+            return;
+        }
+        m_statsProbe = nullptr;
+
+        const QString output = QString::fromUtf8(probe->readAll());
+        probe->deleteLater();
+        if (exitStatus != QProcess::NormalExit || exitCode != 0)
+            return;
+
+        const auto readCount = [&output](const QString &label,
+                                         qulonglong *value) {
+            const QRegularExpression expression(
+                QStringLiteral(R"(^\s*%1:\s*(\d+)\s*$)")
+                    .arg(QRegularExpression::escape(label)),
+                QRegularExpression::MultilineOption);
+            const QRegularExpressionMatch match = expression.match(output);
+            if (!match.hasMatch())
+                return false;
+
+            bool valid = false;
+            const qulonglong parsed = match.captured(1).toULongLong(&valid);
+            if (valid)
+                *value = parsed;
+            return valid;
+        };
+
+        qulonglong meshes = 0;
+        qulonglong vertices = 0;
+        qulonglong triangles = 0;
+        if (!readCount(QStringLiteral("Meshes"), &meshes)
+            || !readCount(QStringLiteral("Vertices"), &vertices)
+            || !readCount(QStringLiteral("Faces"), &triangles)) {
+            return;
+        }
+
+        const QRegularExpression triangleType(
+            QStringLiteral(R"(^\s*Primitive Types:\s*triangles\s*$)"),
+            QRegularExpression::MultilineOption
+                | QRegularExpression::CaseInsensitiveOption);
+        if (!triangleType.match(output).hasMatch())
+            return;
+
+        m_meshCount = meshes;
+        m_vertexCount = vertices;
+        m_triangleCount = triangles;
+        m_modelStatsAvailable = true;
+        emit modelStatsChanged();
+    });
+
+    probe->start(assimp, {
+        QStringLiteral("info"), sourcePath, QStringLiteral("--silent")
+    });
+}
+
+void Backend::cancelModelStatistics() {
+    if (!m_statsProbe)
+        return;
+
+    disconnect(m_statsProbe, nullptr, this, nullptr);
+    if (m_statsProbe->state() != QProcess::NotRunning) {
+        m_statsProbe->kill();
+        m_statsProbe->waitForFinished(500);
+    }
+    delete m_statsProbe;
+    m_statsProbe = nullptr;
+}
+
+void Backend::resetModelStatistics() {
+    if (!m_modelStatsAvailable && m_meshCount == 0
+        && m_vertexCount == 0 && m_triangleCount == 0) {
+        return;
+    }
+
+    m_modelStatsAvailable = false;
+    m_meshCount = 0;
+    m_vertexCount = 0;
+    m_triangleCount = 0;
+    emit modelStatsChanged();
 }
 
 void Backend::startFbxConversion(const QString &sourcePath) {

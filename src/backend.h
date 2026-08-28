@@ -19,6 +19,10 @@ class Backend final : public QObject {
     Q_PROPERTY(QString statusText READ statusText NOTIFY statusTextChanged)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
+    Q_PROPERTY(bool modelStatsAvailable READ modelStatsAvailable NOTIFY modelStatsChanged)
+    Q_PROPERTY(qulonglong meshCount READ meshCount NOTIFY modelStatsChanged)
+    Q_PROPERTY(qulonglong vertexCount READ vertexCount NOTIFY modelStatsChanged)
+    Q_PROPERTY(qulonglong triangleCount READ triangleCount NOTIFY modelStatsChanged)
 
 public:
     explicit Backend(QObject *parent = nullptr);
@@ -33,6 +37,10 @@ public:
     QString statusText() const { return m_statusText; }
     QString errorMessage() const { return m_errorMessage; }
     bool busy() const { return m_busy; }
+    bool modelStatsAvailable() const { return m_modelStatsAvailable; }
+    qulonglong meshCount() const { return m_meshCount; }
+    qulonglong vertexCount() const { return m_vertexCount; }
+    qulonglong triangleCount() const { return m_triangleCount; }
 
     Q_INVOKABLE void openFile(const QUrl &url);
     Q_INVOKABLE void openPath(const QString &path);
@@ -52,11 +60,15 @@ signals:
     void statusTextChanged();
     void errorMessageChanged();
     void busyChanged();
+    void modelStatsChanged();
 
 private:
     static bool isSupportedExtension(const QString &suffix);
     void startFbxConversion(const QString &sourcePath);
     void cancelConversion();
+    void startModelStatistics(const QString &sourcePath);
+    void cancelModelStatistics();
+    void resetModelStatistics();
     void setModelUrl(const QUrl &url);
     void setBusy(bool busy);
     void setStatusText(const QString &text);
@@ -72,7 +84,12 @@ private:
     QString m_statusText = QStringLiteral("Ready");
     QString m_errorMessage;
     bool m_busy = false;
+    bool m_modelStatsAvailable = false;
+    qulonglong m_meshCount = 0;
+    qulonglong m_vertexCount = 0;
+    qulonglong m_triangleCount = 0;
 
     QProcess *m_converter = nullptr;
+    QProcess *m_statsProbe = nullptr;
     std::unique_ptr<QTemporaryDir> m_conversionDirectory;
 };

@@ -1,8 +1,14 @@
 <RCC>
     <qresource prefix="/">
         <file>Main.qml</file>
+        <file>BottomLabelPair.qml</file>
         <file>Preview.qml</file>
         <file>RailButton.qml</file>
         <file>ViewerViewport.qml</file>
+        <file>fonts/JetBrainsMonoNerdFont-Regular.ttf</file>
+        <file>fonts/JetBrainsMonoNerdFont-Bold.ttf</file>
+        <file>fonts/JetBrainsMonoNerdFont-ExtraBold.ttf</file>
+        <file>shaders/infinitegrid.vert</file>
+        <file>shaders/infinitegrid.frag</file>
     </qresource>
 </RCC>

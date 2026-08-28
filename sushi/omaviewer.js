@@ -17,7 +17,7 @@ const NAVIGATION_BRIDGE_XML = `
 <node>
   <interface name="io.nicopellerin.OmaviewerBridge">
     <method name="Select">
-      <arg type="q" name="direction" direction="in"/>
+      <arg type="u" name="direction" direction="in"/>
     </method>
   </interface>
 </node>`;
@@ -33,7 +33,7 @@ function ensureNavigationBridge() {
                 '/org/gnome/NautilusPreviewer',
                 'org.gnome.NautilusPreviewer2',
                 'SelectionEvent',
-                new GLib.Variant('(q)', [direction]));
+                new GLib.Variant('(u)', [direction]));
         },
     };
     navigationBridge = Gio.DBusExportedObject.wrapJSObject(

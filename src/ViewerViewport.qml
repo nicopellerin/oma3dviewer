@@ -11,6 +11,13 @@ Item {
     property color inkColor: "#a9b1d6"
     property color mutedColor: "#565f89"
     property color accentColor: "#7aa2f7"
+    property color gridMinorColor: Qt.rgba(mutedColor.r, mutedColor.g, mutedColor.b, 0.34)
+    property color gridMajorColor: Qt.rgba(mutedColor.r, mutedColor.g, mutedColor.b, 0.48)
+    // Blender's default theme axis colors. Qt Quick 3D is Y-up, so the
+    // shader's internal Z line is presented as Blender's green ground axis.
+    property color xAxisColor: "#ff3352"
+    property color zAxisColor: "#8bdc00"
+    property real gridLineWidth: 1.0
     property bool gridVisible: true
     property bool axesVisible: true
     property bool overlaysVisible: true
@@ -23,6 +30,11 @@ Item {
     property vector3d boundsCenter: Qt.vector3d(0, 0, 0)
     property real boundsDiameter: 100
     property bool frameReady: false
+    property int frameRetryCount: 0
+    readonly property real defaultCameraPitch: 25
+    readonly property real defaultCameraYaw: 35
+    readonly property real defaultFrameFill: 0.64
+    readonly property int maximumFrameRetries: 120
     readonly property real gridInterval: Math.max(0.001,
         Math.pow(10, Math.round(Math.log(Math.max(boundsDiameter, 0.001)) / Math.LN10) - 1))
 
@@ -56,8 +68,8 @@ Item {
         var horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * aspect)
         var tanVertical = Math.tan(Math.max(0.01, verticalHalfFov))
         var tanHorizontal = Math.tan(Math.max(0.01, horizontalHalfFov))
-        var pitch = 12 * Math.PI / 180
-        var yaw = -30 * Math.PI / 180
+        var pitch = defaultCameraPitch * Math.PI / 180
+        var yaw = -defaultCameraYaw * Math.PI / 180
         var cosPitch = Math.cos(pitch)
         var sinPitch = Math.sin(pitch)
         var cosYaw = Math.cos(yaw)
@@ -68,7 +80,7 @@ Item {
         var distance = 0
         var nearestDepth = -Infinity
         var farthestDepth = Infinity
-        var fill = 0.86
+        var fill = defaultFrameFill
 
         for (var xi = -1; xi <= 1; xi += 2) {
             for (var yi = -1; yi <= 1; yi += 2) {
@@ -92,18 +104,23 @@ Item {
         distance = Math.max(distance, diameter * 0.05)
 
         orbitOrigin.position = boundsCenter
-        orbitOrigin.eulerRotation = Qt.vector3d(-12, 30, 0)
+        orbitOrigin.eulerRotation = Qt.vector3d(-defaultCameraPitch,
+                                                defaultCameraYaw, 0)
         camera.position = Qt.vector3d(0, 0, Math.max(0.001, distance))
         camera.eulerRotation = Qt.vector3d(0, 0, 0)
         camera.clipNear = Math.max(0.0001,
                                    (distance - nearestDepth) * 0.25)
+        var modelClipFar = distance - farthestDepth + diameter * 2
+        var gridClipFar = (gridVisible || axesVisible) ? distance * 100 : 0
         camera.clipFar = Math.max(camera.clipNear + 1,
-                                  distance - farthestDepth + diameter * 2)
+                                  modelClipFar,
+                                  gridClipFar)
         frameReady = true
         return true
     }
 
     function scheduleFrame() {
+        frameRetryCount = 0
         frameTimer.restart()
     }
 
@@ -121,12 +138,6 @@ Item {
             clearColor: root.stageColor
             antialiasingMode: SceneEnvironment.MSAA
             antialiasingQuality: SceneEnvironment.High
-
-            InfiniteGrid {
-                visible: root.gridVisible
-                gridAxes: root.axesVisible
-                gridInterval: root.gridInterval
-            }
         }
 
         Node {
@@ -138,6 +149,50 @@ Item {
                 fieldOfView: 42
                 clipNear: 0.1
                 clipFar: 10000
+            }
+        }
+
+        // A view-centred plane covers the visible ground while the shader uses
+        // world coordinates, so the grid and axes remain fixed at the origin.
+        Model {
+            id: infiniteGrid
+            visible: root.gridVisible || root.axesVisible
+            source: "#Rectangle"
+            readonly property real viewDistance: Math.max(
+                camera.clipNear * 2,
+                Math.sqrt(camera.position.x * camera.position.x
+                        + camera.position.y * camera.position.y
+                        + camera.position.z * camera.position.z))
+            position: Qt.vector3d(orbitOrigin.position.x,
+                                  -viewDistance * 0.0005,
+                                  orbitOrigin.position.z)
+            eulerRotation.x: -90
+
+            // Keeping this proportional to zoom distance avoids precision loss
+            // from interpolating across a needlessly huge quad at close range.
+            readonly property real extent: viewDistance * 100
+            scale: Qt.vector3d(extent / 100, extent / 100, 1)
+            castsShadows: false
+            receivesShadows: false
+
+            materials: CustomMaterial {
+                shadingMode: CustomMaterial.Unshaded
+                cullMode: CustomMaterial.NoCulling
+                depthDrawMode: CustomMaterial.NeverDepthDraw
+                sourceBlend: CustomMaterial.SrcAlpha
+                destinationBlend: CustomMaterial.OneMinusSrcAlpha
+
+                property real gridSpacing: root.gridInterval
+                property real gridPixelWidth: Math.max(0.5, root.gridLineWidth)
+                property real gridEnabled: root.gridVisible ? 1.0 : 0.0
+                property real axesEnabled: root.axesVisible ? 1.0 : 0.0
+                property color minorGridColor: root.gridMinorColor
+                property color majorGridColor: root.gridMajorColor
+                property color xGridAxisColor: root.xAxisColor
+                property color zGridAxisColor: root.zAxisColor
+
+                vertexShader: "shaders/infinitegrid.vert"
+                fragmentShader: "shaders/infinitegrid.frag"
             }
         }
 
@@ -159,7 +214,11 @@ Item {
         RuntimeLoader {
             id: modelLoader
             source: root.source
-            onSourceChanged: root.frameReady = false
+            onSourceChanged: {
+                frameTimer.stop()
+                root.frameRetryCount = 0
+                root.frameReady = false
+            }
             onBoundsChanged: root.scheduleFrame()
             onStatusChanged: {
                 if (status === RuntimeLoader.Success)
@@ -170,8 +229,19 @@ Item {
 
     Timer {
         id: frameTimer
-        interval: 0
-        onTriggered: root.frameModel()
+        interval: 16
+        onTriggered: {
+            if (root.frameModel()) {
+                root.frameRetryCount = 0
+                return
+            }
+
+            if (modelLoader.status === RuntimeLoader.Success
+                    && root.frameRetryCount < root.maximumFrameRetries) {
+                root.frameRetryCount += 1
+                restart()
+            }
+        }
     }
 
     onWidthChanged: {
@@ -193,50 +263,34 @@ Item {
         automaticClipping: true
     }
 
-    // Focus brackets mark the interactive render area without adding a card.
-    Canvas {
-        id: focusFrame
-        anchors.fill: parent
-        visible: root.overlaysVisible
-        property color strokeColor: root.accentColor
-        onStrokeColorChanged: requestPaint()
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        Connections {
-            target: root
-            function onLoadedChanged() { focusFrame.requestPaint() }
-        }
-        Component.onCompleted: requestPaint()
-
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.clearRect(0, 0, width, height)
-            ctx.strokeStyle = strokeColor
-            ctx.globalAlpha = root.loaded ? 0.78 : 0.34
-            ctx.lineWidth = 1
-            ctx.beginPath()
-            var m = 14
-            var l = 25
-
-            ctx.moveTo(m, m + l); ctx.lineTo(m, m); ctx.lineTo(m + l, m)
-            ctx.moveTo(width - m - l, m); ctx.lineTo(width - m, m); ctx.lineTo(width - m, m + l)
-            ctx.moveTo(m, height - m - l); ctx.lineTo(m, height - m); ctx.lineTo(m + l, height - m)
-            ctx.moveTo(width - m - l, height - m); ctx.lineTo(width - m, height - m); ctx.lineTo(width - m, height - m - l)
-            ctx.stroke()
-        }
-    }
-
-    Text {
+    Row {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        anchors.leftMargin: 26
-        anchors.bottomMargin: 23
+        anchors.leftMargin: 18
+        anchors.bottomMargin: 14
         visible: root.loaded && root.overlaysVisible
-        text: "DRAG ORBIT   ·   CTRL+DRAG PAN   ·   SCROLL ZOOM"
-        color: Qt.rgba(root.inkColor.r, root.inkColor.g, root.inkColor.b, 0.48)
-        font.family: "monospace"
-        font.pixelSize: 10
-        font.letterSpacing: 0.8
-        renderType: Text.NativeRendering
+        spacing: 18
+
+        property color hintColor: Qt.rgba(root.inkColor.r,
+                                           root.inkColor.g,
+                                           root.inkColor.b, 0.48)
+
+        BottomLabelPair {
+            keyText: "DRAG"
+            valueText: "ORBIT"
+            textColor: parent.hintColor
+        }
+
+        BottomLabelPair {
+            keyText: "CTRL+DRAG"
+            valueText: "PAN"
+            textColor: parent.hintColor
+        }
+
+        BottomLabelPair {
+            keyText: "SCROLL"
+            valueText: "ZOOM"
+            textColor: parent.hintColor
+        }
     }
 }

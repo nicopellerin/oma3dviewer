@@ -3,8 +3,8 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc='Focused GLB, glTF, FBX, and OBJ viewer built with Qt Quick 3D'
 arch=('x86_64')
-url='https://github.com/omacom-io/omaviewer'
-license=('MIT')
+url='https://github.com/nicopellerin/omaviewer'
+license=('MIT' 'OFL-1.1')
 depends=(
   'assimp'
   'hicolor-icon-theme'
@@ -40,4 +40,6 @@ package() {
     "$pkgdir/usr/share/sushi/viewers/omaviewer.js"
   install -Dm644 "$repo_root/LICENSE" \
     "$pkgdir/usr/share/licenses/omaviewer/LICENSE"
+  install -Dm644 "$repo_root/THIRD_PARTY_LICENSES/JetBrainsMonoNerd-OFL.txt" \
+    "$pkgdir/usr/share/licenses/omaviewer/JetBrainsMonoNerd-OFL.txt"
 }

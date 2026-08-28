@@ -149,7 +149,11 @@ Window {
                 Rectangle {
                     anchors.fill: parent
                     visible: backend.busy || !viewport.frameReady
-                    color: systemTheme.stageColor
+                    // Keep the covered View3D rendering so RuntimeLoader can
+                    // finish calculating bounds needed by automatic framing.
+                    color: Qt.rgba(systemTheme.stageColor.r,
+                                   systemTheme.stageColor.g,
+                                   systemTheme.stageColor.b, 0.99)
 
                     Column {
                         anchors.centerIn: parent
@@ -167,7 +171,7 @@ Window {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: backend.busy ? backend.statusText : "Loading model…"
                             color: systemTheme.mutedColor
-                            font.family: "monospace"
+                            font.family: "JetBrainsMono Nerd Font"
                             font.pixelSize: 10
                             font.letterSpacing: 0.7
                             renderType: Text.NativeRendering

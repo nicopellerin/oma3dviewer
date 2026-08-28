@@ -2,6 +2,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFont>
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QJsonDocument>
@@ -64,6 +65,25 @@ int main(int argc, char *argv[]) {
   app.setOrganizationDomain(QStringLiteral("nicopellerin.io"));
   app.setDesktopFileName(QStringLiteral("omaviewer"));
   app.setWindowIcon(QIcon::fromTheme(QStringLiteral("omaviewer")));
+
+  const int regularFontId = QFontDatabase::addApplicationFont(
+      QStringLiteral(":/fonts/JetBrainsMonoNerdFont-Regular.ttf"));
+  const int boldFontId = QFontDatabase::addApplicationFont(
+      QStringLiteral(":/fonts/JetBrainsMonoNerdFont-Bold.ttf"));
+  const int extraBoldFontId = QFontDatabase::addApplicationFont(
+      QStringLiteral(":/fonts/JetBrainsMonoNerdFont-ExtraBold.ttf"));
+  if (regularFontId >= 0 && boldFontId >= 0 && extraBoldFontId >= 0) {
+    const QStringList families =
+        QFontDatabase::applicationFontFamilies(regularFontId);
+    if (!families.isEmpty()) {
+      QFont applicationFont = app.font();
+      applicationFont.setFamily(families.constFirst());
+      applicationFont.setStyleHint(QFont::Monospace);
+      app.setFont(applicationFont);
+    }
+  } else {
+    qWarning() << "Could not load the bundled JetBrains Mono Nerd Font.";
+  }
 
   QQuickStyle::setStyle(QStringLiteral("Material"));
 

@@ -12,6 +12,7 @@ GLB with Assimp, then loaded through the same rendering path.
 - Preview GLB, glTF, OBJ, and FBX files live from Nautilus
 - Follow the active Omarchy theme and accent color live
 - Convert FBX asynchronously without blocking the interface
+- Bundle JetBrains Mono Nerd Font for consistent typography
 - Remember the last window geometry
 
 ## Requirements
@@ -92,4 +93,6 @@ capturing or caching a PNG. Non-model files continue to use Sushi normally.
 
 ## License
 
-Omaviewer is MIT licensed.
+Omaviewer is MIT licensed. The bundled JetBrains Mono Nerd Font is distributed
+under the SIL Open Font License 1.1; see
+`THIRD_PARTY_LICENSES/JetBrainsMonoNerd-OFL.txt`.

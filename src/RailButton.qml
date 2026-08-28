@@ -22,7 +22,7 @@ Button {
         text: control.text
         color: control.checked ? control.accentColor
                                : (control.enabled ? control.inkColor : control.mutedColor)
-        font.family: "monospace"
+        font.family: "JetBrainsMono Nerd Font"
         font.pixelSize: 11
         font.weight: Font.DemiBold
         font.letterSpacing: 0.7
