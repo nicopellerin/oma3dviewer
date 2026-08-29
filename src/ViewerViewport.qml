@@ -138,6 +138,14 @@ Item {
             clearColor: root.stageColor
             antialiasingMode: SceneEnvironment.MSAA
             antialiasingQuality: SceneEnvironment.High
+            specularAAEnabled: true
+            tonemapMode: SceneEnvironment.TonemapModeAces
+            aoEnabled: true
+            aoStrength: 20
+            aoDistance: Math.max(0.001, root.boundsDiameter * 0.08)
+            aoSoftness: 40
+            aoSampleRate: 3
+            aoDither: true
         }
 
         Node {
@@ -199,17 +207,30 @@ Item {
         }
 
         DirectionalLight {
-            eulerRotation: Qt.vector3d(-38, -32, 0)
-            brightness: 1.15
-            ambientColor: Qt.rgba(0.24, 0.24, 0.28, 1)
+            eulerRotation: Qt.vector3d(-42, -35, 0)
+            brightness: 1.35
+            color: "#fff8f0"
+            ambientColor: Qt.rgba(0.13, 0.14, 0.17, 1)
             castsShadow: true
-            shadowFactor: 35
+            shadowFactor: 52
+            shadowMapQuality: Light.ShadowMapQualityHigh
+            shadowMapFar: Math.max(1, root.boundsDiameter * 4)
+            shadowBias: Math.max(0.0001, root.boundsDiameter * 0.001)
+            softShadowQuality: Light.PCF16
+            pcfFactor: Math.max(0.001, root.boundsDiameter * 0.008)
         }
 
         DirectionalLight {
-            eulerRotation: Qt.vector3d(24, 145, 0)
-            brightness: 0.45
-            color: root.accentColor
+            eulerRotation: Qt.vector3d(-12, 58, 0)
+            brightness: 0.5
+            color: "#e8f0ff"
+            castsShadow: false
+        }
+
+        DirectionalLight {
+            eulerRotation: Qt.vector3d(28, 155, 0)
+            brightness: 0.3
+            color: "#ffffff"
             castsShadow: false
         }
 
