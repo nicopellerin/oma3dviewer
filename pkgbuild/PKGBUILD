@@ -42,6 +42,4 @@ package() {
     "$pkgdir/usr/share/sushi/viewers/omagltf.js"
   install -Dm644 "$repo_root/LICENSE" \
     "$pkgdir/usr/share/licenses/omagltf/LICENSE"
-  install -Dm644 "$repo_root/THIRD_PARTY_LICENSES/JetBrainsMonoNerd-OFL.txt" \
-    "$pkgdir/usr/share/licenses/omagltf/JetBrainsMonoNerd-OFL.txt"
 }
