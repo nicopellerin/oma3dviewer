@@ -12,7 +12,7 @@ let navigationBridge = null;
 
 const NAVIGATION_BRIDGE_XML = `
 <node>
-  <interface name="io.nicopellerin.OmagltfBridge">
+  <interface name="io.nicopellerin.Oma3dviewerBridge">
     <method name="Select">
       <arg type="u" name="direction" direction="in"/>
     </method>
@@ -37,11 +37,11 @@ function ensureNavigationBridge() {
         NAVIGATION_BRIDGE_XML, implementation);
     navigationBridge.export(
         Gio.DBus.session,
-        '/org/gnome/NautilusPreviewer/OmagltfBridge');
+        '/org/gnome/NautilusPreviewer/Oma3dviewerBridge');
 }
 
 function executablePath() {
-    return GLib.find_program_in_path('omagltf');
+    return GLib.find_program_in_path('oma3dviewer');
 }
 
 function invokePreview(arguments_) {
@@ -56,7 +56,7 @@ function invokePreview(arguments_) {
                 Gio.SubprocessFlags.STDERR_SILENCE);
         return true;
     } catch (error) {
-        logError(error, 'Could not launch the Omagltf live preview');
+        logError(error, 'Could not launch the Oma3DViewer live preview');
         return false;
     }
 }
@@ -119,7 +119,7 @@ var Klass = GObject.registerClass({
         ready: GObject.ParamSpec.boolean(
             'ready', '', '', GObject.ParamFlags.READABLE, false),
     },
-}, class OmagltfRenderer extends Gtk.DrawingArea {
+}, class Oma3dviewerRenderer extends Gtk.DrawingArea {
     get ready() {
         return !!this._ready;
     }
@@ -159,7 +159,7 @@ var Klass = GObject.registerClass({
 
         const sourcePath = file.get_path();
         if (!sourcePath || !invokePreview(['--preview', sourcePath])) {
-            log('Omagltf live preview requires a local model and executable.');
+            log('Oma3DViewer live preview requires a local model and executable.');
             this.isReady();
             return;
         }

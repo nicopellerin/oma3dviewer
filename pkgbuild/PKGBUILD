@@ -1,13 +1,13 @@
-pkgname=omagltf
+pkgname=oma3dviewer
 pkgver=0.1.0
 pkgrel=1
 pkgdesc='Focused GLB, glTF, FBX, and OBJ viewer built with Qt Quick 3D'
 arch=('x86_64')
-url='https://github.com/nicopellerin/omagltf'
+url='https://github.com/nicopellerin/oma3dviewer'
 license=('MIT' 'OFL-1.1')
 options=('!debug')
-replaces=('omaviewer')
-conflicts=('omaviewer')
+replaces=('omagltf' 'omagltf-debug' 'omaviewer')
+conflicts=('omagltf' 'omagltf-debug' 'omaviewer')
 depends=(
   'assimp'
   'hicolor-icon-theme'
@@ -20,7 +20,7 @@ depends=(
 )
 makedepends=('gcc' 'make')
 optdepends=('blender: preview Blender scenes with Sushi')
-install=omagltf.install
+install=oma3dviewer.install
 source=()
 sha256sums=()
 
@@ -32,16 +32,16 @@ build() {
 package() {
   local repo_root="$startdir/.."
 
-  install -Dm755 "$repo_root/build/omagltf" \
-    "$pkgdir/usr/bin/omagltf"
-  install -Dm644 "$repo_root/pkgbuild/omagltf.desktop" \
-    "$pkgdir/usr/share/applications/omagltf.desktop"
-  install -Dm644 "$repo_root/pkgbuild/omagltf.svg" \
-    "$pkgdir/usr/share/icons/hicolor/scalable/apps/omagltf.svg"
-  install -Dm644 "$repo_root/pkgbuild/omagltf-mime.xml" \
-    "$pkgdir/usr/share/mime/packages/omagltf.xml"
-  install -Dm644 "$repo_root/sushi/omagltf.js" \
-    "$pkgdir/usr/share/gjs-1.0/viewers/omagltf.js"
+  install -Dm755 "$repo_root/build/oma3dviewer" \
+    "$pkgdir/usr/bin/oma3dviewer"
+  install -Dm644 "$repo_root/pkgbuild/oma3dviewer.desktop" \
+    "$pkgdir/usr/share/applications/oma3dviewer.desktop"
+  install -Dm644 "$repo_root/pkgbuild/oma3dviewer.svg" \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/oma3dviewer.svg"
+  install -Dm644 "$repo_root/pkgbuild/oma3dviewer-mime.xml" \
+    "$pkgdir/usr/share/mime/packages/oma3dviewer.xml"
+  install -Dm644 "$repo_root/sushi/oma3dviewer.js" \
+    "$pkgdir/usr/share/gjs-1.0/viewers/oma3dviewer.js"
   install -Dm644 "$repo_root/LICENSE" \
-    "$pkgdir/usr/share/licenses/omagltf/LICENSE"
+    "$pkgdir/usr/share/licenses/oma3dviewer/LICENSE"
 }

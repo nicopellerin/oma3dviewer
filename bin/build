@@ -2,8 +2,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-build_dir="${OMAGLTF_BUILD_DIR:-$repo_root/build}"
-jobs="${OMAGLTF_BUILD_JOBS:-$(nproc)}"
+build_dir="${OMA3DVIEWER_BUILD_DIR:-$repo_root/build}"
+jobs="${OMA3DVIEWER_BUILD_JOBS:-$(nproc)}"
 
 if ! command -v qmake6 >/dev/null 2>&1; then
   echo "qmake6 is required. Install qt6-base first." >&2
@@ -12,7 +12,7 @@ fi
 
 mkdir -p "$build_dir"
 cd "$build_dir"
-qmake6 "$repo_root/omagltf.pro"
+qmake6 "$repo_root/oma3dviewer.pro"
 make -j"$jobs"
 
-echo "Built $build_dir/omagltf"
+echo "Built $build_dir/oma3dviewer"

@@ -88,7 +88,7 @@ void Backend::openFullViewer() {
 
     if (!QProcess::startDetached(QCoreApplication::applicationFilePath(),
                                  {m_sourcePath})) {
-        setError(QStringLiteral("Could not open the full Omagltf window."));
+        setError(QStringLiteral("Could not open the full Oma3DViewer window."));
         return;
     }
     closePreview();
@@ -111,8 +111,8 @@ void Backend::navigatePreview(int direction) {
 
     QDBusMessage message = QDBusMessage::createMethodCall(
         QStringLiteral("org.gnome.NautilusPreviewer"),
-        QStringLiteral("/org/gnome/NautilusPreviewer/OmagltfBridge"),
-        QStringLiteral("io.nicopellerin.OmagltfBridge"),
+        QStringLiteral("/org/gnome/NautilusPreviewer/Oma3dviewerBridge"),
+        QStringLiteral("io.nicopellerin.Oma3dviewerBridge"),
         QStringLiteral("Select"));
     message << QVariant::fromValue(static_cast<quint32>(direction));
     QDBusConnection::sessionBus().send(message);
@@ -120,7 +120,7 @@ void Backend::navigatePreview(int direction) {
 
 void Backend::openFile(const QUrl &url) {
     if (!url.isLocalFile()) {
-        setError(QStringLiteral("Omagltf can only open local model files."));
+        setError(QStringLiteral("Oma3DViewer can only open local model files."));
         return;
     }
     openPath(url.toLocalFile());
@@ -282,7 +282,7 @@ void Backend::startFbxConversion(const QString &sourcePath) {
     }
 
     m_conversionDirectory = std::make_unique<QTemporaryDir>(
-        QDir::tempPath() + QStringLiteral("/omagltf-XXXXXX"));
+        QDir::tempPath() + QStringLiteral("/oma3dviewer-XXXXXX"));
     if (!m_conversionDirectory->isValid()) {
         setError(QStringLiteral("Could not create a temporary directory for FBX conversion."));
         setStatusText(QStringLiteral("Conversion failed"));
@@ -344,7 +344,7 @@ void Backend::startBlendConversion(const QString &sourcePath) {
     }
 
     m_conversionDirectory = std::make_unique<QTemporaryDir>(
-        QDir::tempPath() + QStringLiteral("/omagltf-XXXXXX"));
+        QDir::tempPath() + QStringLiteral("/oma3dviewer-XXXXXX"));
     if (!m_conversionDirectory->isValid()) {
         setError(QStringLiteral(
             "Could not create a temporary directory for Blender conversion."));
@@ -379,7 +379,7 @@ void Backend::startBlendConversion(const QString &sourcePath) {
                            blenderPrefix.absolutePath());
     }
     environment.insert(QStringLiteral("ALSOFT_DRIVERS"), QStringLiteral("null"));
-    environment.insert(QStringLiteral("OMAGLTF_BLEND_OUTPUT"), outputPath);
+    environment.insert(QStringLiteral("OMA3DVIEWER_BLEND_OUTPUT"), outputPath);
     m_converter->setProcessEnvironment(environment);
 
     connect(m_converter, &QProcess::errorOccurred, this,
@@ -419,7 +419,7 @@ void Backend::startBlendConversion(const QString &sourcePath) {
     const QString exportScript = QStringLiteral(
         "import bpy, os\n"
         "result = bpy.ops.export_scene.gltf("
-            "filepath=os.environ['OMAGLTF_BLEND_OUTPUT'], export_format='GLB')\n"
+            "filepath=os.environ['OMA3DVIEWER_BLEND_OUTPUT'], export_format='GLB')\n"
         "if 'FINISHED' not in result:\n"
         "    raise RuntimeError('glTF export failed: ' + repr(result))\n");
 

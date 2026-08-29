@@ -27,7 +27,7 @@ QString previewSocketPath() {
       QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
   if (directory.isEmpty())
     directory = QDir::tempPath();
-  return QDir(directory).filePath(QStringLiteral("omagltf-preview.sock"));
+  return QDir(directory).filePath(QStringLiteral("oma3dviewer-preview.sock"));
 }
 
 QByteArray previewCommand(const QString &command, const QString &path = {}) {
@@ -58,13 +58,13 @@ bool sendPreviewCommand(const QString &command, const QString &path = {}) {
 
 int main(int argc, char *argv[]) {
   QGuiApplication app(argc, argv);
-  app.setApplicationName(QStringLiteral("omagltf"));
-  app.setApplicationDisplayName(QStringLiteral("omagltf"));
+  app.setApplicationName(QStringLiteral("oma3dviewer"));
+  app.setApplicationDisplayName(QStringLiteral("oma3dviewer"));
   app.setApplicationVersion(QStringLiteral("0.1.0"));
   app.setOrganizationName(QStringLiteral("nicopellerin"));
   app.setOrganizationDomain(QStringLiteral("nicopellerin.io"));
-  app.setDesktopFileName(QStringLiteral("omagltf"));
-  app.setWindowIcon(QIcon::fromTheme(QStringLiteral("omagltf")));
+  app.setDesktopFileName(QStringLiteral("oma3dviewer"));
+  app.setWindowIcon(QIcon::fromTheme(QStringLiteral("oma3dviewer")));
 
   const int regularFontId = QFontDatabase::addApplicationFont(
       QStringLiteral(":/fonts/JetBrainsMonoNerdFont-Regular.ttf"));
@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
     QLocalServer::removeServer(socketPath);
     previewServer = std::make_unique<QLocalServer>();
     if (!previewServer->listen(socketPath)) {
-      qCritical() << "Could not start the Omagltf preview bridge:"
+      qCritical() << "Could not start the Oma3DViewer preview bridge:"
                   << previewServer->errorString();
       return -1;
     }
@@ -168,7 +168,7 @@ int main(int argc, char *argv[]) {
         QLocalSocket *socket = previewServer->nextPendingConnection();
         const auto consume = [socket, handlePayload]() {
           QByteArray buffer =
-              socket->property("omagltfPreviewBuffer").toByteArray();
+              socket->property("oma3dviewerPreviewBuffer").toByteArray();
           buffer.append(socket->readAll());
 
           qsizetype newline = -1;
@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
             if (!line.isEmpty())
               handlePayload(line);
           }
-          socket->setProperty("omagltfPreviewBuffer", buffer);
+          socket->setProperty("oma3dviewerPreviewBuffer", buffer);
         };
         QObject::connect(socket, &QLocalSocket::readyRead, socket, consume);
         QObject::connect(socket, &QLocalSocket::disconnected, socket,
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
                                : QStringLiteral("qrc:/Main.qml")));
 
   if (engine.rootObjects().isEmpty()) {
-    qCritical() << "Could not load the Omagltf interface; resource available:"
+    qCritical() << "Could not load the Oma3DViewer interface; resource available:"
                 << QFile::exists(QStringLiteral(":/Main.qml"));
     return -1;
   }
