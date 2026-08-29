@@ -18,9 +18,10 @@ depends=(
   'xdg-desktop-portal'
 )
 makedepends=('gcc' 'make')
+optdepends=('blender: preview Blender scenes with Sushi')
 install=omagltf.install
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('02f70bb6e98849aec2408a31c59b01f63fd6d3a37d0a0a2b449ac7a8702f553d')
+sha256sums=('60d4c94353517e96c14b5c74e92e959e07fdd1c346a78aa6e5ced894cb63481f')
 
 build() {
   cd "$srcdir/$pkgname-$pkgver"
@@ -39,7 +40,7 @@ package() {
   install -Dm644 "$repo_root/pkgbuild/omagltf-mime.xml" \
     "$pkgdir/usr/share/mime/packages/omagltf.xml"
   install -Dm644 "$repo_root/sushi/omagltf.js" \
-    "$pkgdir/usr/share/sushi/viewers/omagltf.js"
+    "$pkgdir/usr/share/gjs-1.0/viewers/omagltf.js"
   install -Dm644 "$repo_root/LICENSE" \
     "$pkgdir/usr/share/licenses/omagltf/LICENSE"
 }

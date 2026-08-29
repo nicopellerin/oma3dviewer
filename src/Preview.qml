@@ -116,6 +116,7 @@ Window {
 
                     RailButton {
                         text: "OPEN WITH OMAGLTF"
+                        visible: !backend.fileType.startsWith("BLEND")
                         focusPolicy: Qt.NoFocus
                         outlined: true
                         inkColor: systemTheme.inkColor

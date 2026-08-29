@@ -17,9 +17,10 @@ pkgbase = omagltf
 	depends = shared-mime-info
 	depends = sushi
 	depends = xdg-desktop-portal
+	optdepends = blender: preview Blender scenes with Sushi
 	conflicts = omaviewer
 	replaces = omaviewer
 	source = omagltf-0.1.0.tar.gz::https://github.com/nicopellerin/omagltf/archive/refs/tags/v0.1.0.tar.gz
-	sha256sums = 02f70bb6e98849aec2408a31c59b01f63fd6d3a37d0a0a2b449ac7a8702f553d
+	sha256sums = 60d4c94353517e96c14b5c74e92e959e07fdd1c346a78aa6e5ced894cb63481f
 
 pkgname = omagltf

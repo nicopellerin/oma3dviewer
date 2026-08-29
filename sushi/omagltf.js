@@ -201,4 +201,5 @@ var mimeTypes = [
     'model/gltf+json',
     'model/obj',
     'model/x-fbx',
+    'application/x-blender',
 ];

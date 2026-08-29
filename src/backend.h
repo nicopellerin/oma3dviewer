@@ -25,7 +25,8 @@ class Backend final : public QObject {
     Q_PROPERTY(qulonglong triangleCount READ triangleCount NOTIFY modelStatsChanged)
 
 public:
-    explicit Backend(QObject *parent = nullptr);
+    explicit Backend(bool blendPreviewEnabled = false,
+                     QObject *parent = nullptr);
     ~Backend() override;
 
     QUrl modelUrl() const { return m_modelUrl; }
@@ -63,8 +64,9 @@ signals:
     void modelStatsChanged();
 
 private:
-    static bool isSupportedExtension(const QString &suffix);
+    bool isSupportedExtension(const QString &suffix) const;
     void startFbxConversion(const QString &sourcePath);
+    void startBlendConversion(const QString &sourcePath);
     void cancelConversion();
     void startModelStatistics(const QString &sourcePath);
     void cancelModelStatistics();
@@ -83,6 +85,7 @@ private:
     QString m_sourcePath;
     QString m_statusText = QStringLiteral("Ready");
     QString m_errorMessage;
+    bool m_blendPreviewEnabled = false;
     bool m_busy = false;
     bool m_modelStatsAvailable = false;
     qulonglong m_meshCount = 0;

@@ -16,20 +16,21 @@ namespace {
 constexpr auto geometryGroup = "window";
 }
 
-Backend::Backend(QObject *parent)
-    : QObject(parent) {}
+Backend::Backend(bool blendPreviewEnabled, QObject *parent)
+    : QObject(parent), m_blendPreviewEnabled(blendPreviewEnabled) {}
 
 Backend::~Backend() {
     cancelModelStatistics();
     cancelConversion();
 }
 
-bool Backend::isSupportedExtension(const QString &suffix) {
+bool Backend::isSupportedExtension(const QString &suffix) const {
     const QString normalized = suffix.toLower();
     return normalized == QStringLiteral("glb")
         || normalized == QStringLiteral("gltf")
         || normalized == QStringLiteral("obj")
-        || normalized == QStringLiteral("fbx");
+        || normalized == QStringLiteral("fbx")
+        || (m_blendPreviewEnabled && normalized == QStringLiteral("blend"));
 }
 
 bool Backend::acceptsUrl(const QUrl &url) const {
@@ -134,12 +135,14 @@ void Backend::openPath(const QString &path) {
 
     const QString suffix = info.suffix().toLower();
     if (!isSupportedExtension(suffix)) {
-        setError(QStringLiteral("Unsupported model format. Open a GLB, glTF, OBJ, or FBX file."));
+        setError(m_blendPreviewEnabled
+            ? QStringLiteral("Unsupported model format. Preview a GLB, glTF, OBJ, FBX, or BLEND file.")
+            : QStringLiteral("Unsupported model format. Open a GLB, glTF, OBJ, or FBX file."));
         return;
     }
 
-    cancelConversion();
     cancelModelStatistics();
+    cancelConversion();
     resetModelStatistics();
     clearError();
     setModelUrl({});
@@ -148,6 +151,12 @@ void Backend::openPath(const QString &path) {
         updateFileInfo(info.absoluteFilePath(), QStringLiteral("FBX"));
         startModelStatistics(info.absoluteFilePath());
         startFbxConversion(info.absoluteFilePath());
+        return;
+    }
+
+    if (suffix == QStringLiteral("blend")) {
+        updateFileInfo(info.absoluteFilePath(), QStringLiteral("BLEND"));
+        startBlendConversion(info.absoluteFilePath());
         return;
     }
 
@@ -322,6 +331,109 @@ void Backend::startFbxConversion(const QString &sourcePath) {
     setStatusText(QStringLiteral("Converting FBX…"));
     m_converter->start(assimp, {
         QStringLiteral("export"), sourcePath, outputPath, QStringLiteral("-fglb2")
+    });
+}
+
+void Backend::startBlendConversion(const QString &sourcePath) {
+    const QString blender = QStandardPaths::findExecutable(QStringLiteral("blender"));
+    if (blender.isEmpty()) {
+        setError(QStringLiteral(
+            "Blender previews require Blender. Install it with: omarchy pkg add blender"));
+        setStatusText(QStringLiteral("BLEND preview unavailable"));
+        return;
+    }
+
+    m_conversionDirectory = std::make_unique<QTemporaryDir>(
+        QDir::tempPath() + QStringLiteral("/omagltf-XXXXXX"));
+    if (!m_conversionDirectory->isValid()) {
+        setError(QStringLiteral(
+            "Could not create a temporary directory for Blender conversion."));
+        setStatusText(QStringLiteral("Conversion failed"));
+        m_conversionDirectory.reset();
+        return;
+    }
+
+    const QString outputPath = m_conversionDirectory->filePath(QStringLiteral("model.glb"));
+    m_converter = new QProcess(this);
+    m_converter->setProcessChannelMode(QProcess::MergedChannels);
+
+    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+    const QString blenderDirectory = QFileInfo(blender).absolutePath();
+    const QString inheritedPath = environment.value(QStringLiteral("PATH"));
+    environment.insert(QStringLiteral("PATH"), inheritedPath.isEmpty()
+        ? blenderDirectory
+        : blenderDirectory + QDir::listSeparator() + inheritedPath);
+    environment.remove(QStringLiteral("PYTHONHOME"));
+    environment.remove(QStringLiteral("PYTHONPATH"));
+    environment.remove(QStringLiteral("PYTHONUSERBASE"));
+    environment.remove(QStringLiteral("VIRTUAL_ENV"));
+    // Distribution builds of Blender use the Python installed alongside
+    // them. Pin that prefix so a Mise/pyenv Python earlier in PATH cannot
+    // supply an incompatible standard library to Blender's embedded Python.
+    QDir blenderPrefix(blenderDirectory);
+    if (blenderPrefix.dirName() == QStringLiteral("bin")
+        && blenderPrefix.cdUp()
+        && QFileInfo(blenderPrefix.filePath(QStringLiteral("bin/python3")))
+               .isExecutable()) {
+        environment.insert(QStringLiteral("BLENDER_SYSTEM_PYTHON"),
+                           blenderPrefix.absolutePath());
+    }
+    environment.insert(QStringLiteral("ALSOFT_DRIVERS"), QStringLiteral("null"));
+    environment.insert(QStringLiteral("OMAGLTF_BLEND_OUTPUT"), outputPath);
+    m_converter->setProcessEnvironment(environment);
+
+    connect(m_converter, &QProcess::errorOccurred, this,
+            [this](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart) {
+            setBusy(false);
+            setStatusText(QStringLiteral("Conversion failed"));
+            setError(QStringLiteral("Blender could not be started."));
+        }
+    });
+
+    connect(m_converter,
+            qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+            [this, outputPath](int exitCode, QProcess::ExitStatus exitStatus) {
+        const QString processOutput = QString::fromUtf8(m_converter->readAll()).trimmed();
+        setBusy(false);
+
+        if (exitStatus == QProcess::NormalExit && exitCode == 0
+            && QFileInfo::exists(outputPath)) {
+            m_fileType = QStringLiteral("BLEND · converted");
+            emit fileInfoChanged();
+            startModelStatistics(outputPath);
+            setModelUrl(QUrl::fromLocalFile(outputPath));
+            setStatusText(QStringLiteral("Loaded"));
+        } else {
+            setStatusText(QStringLiteral("Conversion failed"));
+            const QString detail = processOutput.isEmpty()
+                ? QStringLiteral("Blender could not convert this BLEND file.")
+                : processOutput;
+            setError(detail);
+        }
+
+        m_converter->deleteLater();
+        m_converter = nullptr;
+    });
+
+    const QString exportScript = QStringLiteral(
+        "import bpy, os\n"
+        "result = bpy.ops.export_scene.gltf("
+            "filepath=os.environ['OMAGLTF_BLEND_OUTPUT'], export_format='GLB')\n"
+        "if 'FINISHED' not in result:\n"
+        "    raise RuntimeError('glTF export failed: ' + repr(result))\n");
+
+    setBusy(true);
+    setStatusText(QStringLiteral("Converting BLEND…"));
+    m_converter->start(blender, {
+        QStringLiteral("--background"),
+        QStringLiteral("--factory-startup"),
+        QStringLiteral("--disable-autoexec"),
+        QStringLiteral("--offline-mode"),
+        sourcePath,
+        QStringLiteral("-noaudio"),
+        QStringLiteral("--python-exit-code"), QStringLiteral("1"),
+        QStringLiteral("--python-expr"), exportScript
     });
 }
 

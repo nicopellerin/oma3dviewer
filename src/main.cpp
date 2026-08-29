@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  Backend backend;
+  Backend backend(previewMode);
   SystemTheme systemTheme;
   if (!sourcePath.isEmpty())
     backend.openPath(sourcePath);
