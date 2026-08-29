@@ -241,32 +241,6 @@ ApplicationWindow {
                 spacing: 14
                 visible: backend.modelUrl.toString() === "" && !backend.busy
 
-                Item {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: 76
-                    height: 76
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "transparent"
-                        border.width: 1
-                        border.color: win.mixColors(systemTheme.stageColor,
-                                                    systemTheme.inkColor, 0.23)
-                        rotation: 45
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "XYZ"
-                        color: systemTheme.accentColor
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 11
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1
-                        renderType: Text.NativeRendering
-                    }
-                }
-
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "Drop a 3D model"

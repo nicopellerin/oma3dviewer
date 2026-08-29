@@ -142,6 +142,8 @@ Item {
 
         Node {
             id: orbitOrigin
+            eulerRotation: Qt.vector3d(-root.defaultCameraPitch,
+                                       root.defaultCameraYaw, 0)
 
             PerspectiveCamera {
                 id: camera
