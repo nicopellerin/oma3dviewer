@@ -4,9 +4,6 @@ const {Gio, GLib, GObject, Gtk} = imports.gi;
 
 const Renderer = imports.ui.renderer;
 
-const DEVELOPMENT_EXECUTABLE =
-    '/home/nico/Desktop/code/omagltf/build/omagltf';
-
 let activeRenderers = 0;
 let closeSourceId = 0;
 let controllerWindow = null;
@@ -44,13 +41,7 @@ function ensureNavigationBridge() {
 }
 
 function executablePath() {
-    const installedExecutable = GLib.find_program_in_path('omagltf');
-    if (installedExecutable)
-        return installedExecutable;
-    if (GLib.file_test(
-        DEVELOPMENT_EXECUTABLE, GLib.FileTest.IS_EXECUTABLE))
-        return DEVELOPMENT_EXECUTABLE;
-    return null;
+    return GLib.find_program_in_path('omagltf');
 }
 
 function invokePreview(arguments_) {
