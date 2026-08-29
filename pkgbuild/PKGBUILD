@@ -21,16 +21,16 @@ depends=(
 makedepends=('gcc' 'make')
 optdepends=('blender: preview Blender scenes with Sushi')
 install=omagltf.install
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('60d4c94353517e96c14b5c74e92e959e07fdd1c346a78aa6e5ced894cb63481f')
+source=()
+sha256sums=()
 
 build() {
-  cd "$srcdir/$pkgname-$pkgver"
+  cd "$startdir/.."
   ./bin/build
 }
 
 package() {
-  local repo_root="$srcdir/$pkgname-$pkgver"
+  local repo_root="$startdir/.."
 
   install -Dm755 "$repo_root/build/omagltf" \
     "$pkgdir/usr/bin/omagltf"
