@@ -28,11 +28,7 @@ if command -v qmlformat >/dev/null 2>&1; then
 fi
 
 if pkg-config --exists Qt6Quick3D 2>/dev/null; then
-  qmllint -I /usr/lib/qt6/qml \
-    "$repo_root/src/Main.qml" \
-    "$repo_root/src/Preview.qml" \
-    "$repo_root/src/RailButton.qml" \
-    "$repo_root/src/ViewerViewport.qml"
+  qmllint -I /usr/lib/qt6/qml "$repo_root"/src/*.qml
   "$repo_root/bin/build"
 else
   echo "Skipping QML/build checks: qt6-quick3d is not installed."

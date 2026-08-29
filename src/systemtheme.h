@@ -2,6 +2,7 @@
 
 #include <QByteArray>
 #include <QColor>
+#include <QFileSystemWatcher>
 #include <QObject>
 #include <QTimer>
 
@@ -13,7 +14,6 @@ class SystemTheme final : public QObject {
     Q_PROPERTY(QColor inkColor READ inkColor NOTIFY themeChanged)
     Q_PROPERTY(QColor mutedColor READ mutedColor NOTIFY themeChanged)
     Q_PROPERTY(QColor accentColor READ accentColor NOTIFY themeChanged)
-    Q_PROPERTY(QColor selectionColor READ selectionColor NOTIFY themeChanged)
     Q_PROPERTY(QColor errorColor READ errorColor NOTIFY themeChanged)
 
 public:
@@ -25,14 +25,18 @@ public:
     QColor inkColor() const { return m_inkColor; }
     QColor mutedColor() const { return m_mutedColor; }
     QColor accentColor() const { return m_accentColor; }
-    QColor selectionColor() const { return m_selectionColor; }
     QColor errorColor() const { return m_errorColor; }
+
+    Q_INVOKABLE QColor mix(const QColor &base, const QColor &tint,
+                           qreal amount) const;
 
 signals:
     void themeChanged();
 
 private:
+    void refresh();
     void reload();
+    void watchThemePaths();
 
     QByteArray m_lastContents;
     bool m_darkMode = true;
@@ -41,8 +45,7 @@ private:
     QColor m_inkColor = QColor(QStringLiteral("#a9b1d6"));
     QColor m_mutedColor = QColor(QStringLiteral("#565f89"));
     QColor m_accentColor = QColor(QStringLiteral("#7aa2f7"));
-    QColor m_selectionColor = QColor(QStringLiteral("#292e42"));
     QColor m_errorColor = QColor(QStringLiteral("#f7768e"));
+    QFileSystemWatcher m_watcher;
     QTimer m_pollTimer;
 };
-

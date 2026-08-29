@@ -5,6 +5,7 @@
 #include <QDBusMessage>
 #include <QDir>
 #include <QFileInfo>
+#include <QHash>
 #include <QLocale>
 #include <QProcessEnvironment>
 #include <QRegularExpression>
@@ -14,6 +15,18 @@
 
 namespace {
 constexpr auto geometryGroup = "window";
+
+void stopProcess(QProcess *&process) {
+    if (!process)
+        return;
+    process->disconnect();
+    if (process->state() != QProcess::NotRunning) {
+        process->kill();
+        process->waitForFinished(500);
+    }
+    delete process;
+    process = nullptr;
+}
 }
 
 Backend::Backend(bool blendPreviewEnabled, QObject *parent)
@@ -24,62 +37,22 @@ Backend::~Backend() {
     cancelConversion();
 }
 
+QStringList Backend::supportedExtensions() const {
+    QStringList extensions{QStringLiteral("glb"), QStringLiteral("gltf"),
+                           QStringLiteral("obj"), QStringLiteral("fbx")};
+    if (m_blendPreviewEnabled)
+        extensions.append(QStringLiteral("blend"));
+    return extensions;
+}
+
 bool Backend::isSupportedExtension(const QString &suffix) const {
-    const QString normalized = suffix.toLower();
-    return normalized == QStringLiteral("glb")
-        || normalized == QStringLiteral("gltf")
-        || normalized == QStringLiteral("obj")
-        || normalized == QStringLiteral("fbx")
-        || (m_blendPreviewEnabled && normalized == QStringLiteral("blend"));
+    return supportedExtensions().contains(suffix.toLower());
 }
 
 bool Backend::acceptsUrl(const QUrl &url) const {
     if (!url.isLocalFile())
         return false;
     return isSupportedExtension(QFileInfo(url.toLocalFile()).suffix());
-}
-
-QVariantMap Backend::modelBounds() const {
-    QVariantMap result{{QStringLiteral("valid"), false}};
-    if (m_sourcePath.isEmpty())
-        return result;
-
-    const QString assimp = QStandardPaths::findExecutable(QStringLiteral("assimp"));
-    if (assimp.isEmpty())
-        return result;
-
-    QProcess probe;
-    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
-    environment.insert(QStringLiteral("LC_ALL"), QStringLiteral("C"));
-    probe.setProcessEnvironment(environment);
-    probe.setProcessChannelMode(QProcess::MergedChannels);
-    probe.start(assimp, {QStringLiteral("info"), m_sourcePath});
-    if (!probe.waitForStarted(2000) || !probe.waitForFinished(15000)) {
-        probe.kill();
-        probe.waitForFinished(500);
-        return result;
-    }
-
-    const QString output = QString::fromUtf8(probe.readAll());
-    static const QRegularExpression pointPattern(
-        QStringLiteral(
-            R"((Minimum|Maximum) point\s+\(\s*([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s*\))"));
-
-    bool hasMinimum = false;
-    bool hasMaximum = false;
-    auto matches = pointPattern.globalMatch(output);
-    while (matches.hasNext()) {
-        const QRegularExpressionMatch match = matches.next();
-        const QString prefix = match.captured(1).toLower();
-        result.insert(prefix + QStringLiteral("X"), match.captured(2).toDouble());
-        result.insert(prefix + QStringLiteral("Y"), match.captured(3).toDouble());
-        result.insert(prefix + QStringLiteral("Z"), match.captured(4).toDouble());
-        hasMinimum = hasMinimum || prefix == QStringLiteral("minimum");
-        hasMaximum = hasMaximum || prefix == QStringLiteral("maximum");
-    }
-
-    result.insert(QStringLiteral("valid"), hasMinimum && hasMaximum);
-    return result;
 }
 
 void Backend::openFullViewer() {
@@ -135,9 +108,14 @@ void Backend::openPath(const QString &path) {
 
     const QString suffix = info.suffix().toLower();
     if (!isSupportedExtension(suffix)) {
-        setError(m_blendPreviewEnabled
-            ? QStringLiteral("Unsupported model format. Preview a GLB, glTF, OBJ, FBX, or BLEND file.")
-            : QStringLiteral("Unsupported model format. Open a GLB, glTF, OBJ, or FBX file."));
+        QStringList labels;
+        for (const QString &extension : supportedExtensions())
+            labels.append(extension.toUpper());
+        const QString last = labels.takeLast();
+        setError(QStringLiteral("Unsupported model format. %1 a %2, or %3 file.")
+            .arg(m_blendPreviewEnabled ? QStringLiteral("Preview")
+                                       : QStringLiteral("Open"),
+                 labels.join(QStringLiteral(", ")), last));
         return;
     }
 
@@ -146,10 +124,10 @@ void Backend::openPath(const QString &path) {
     resetModelStatistics();
     clearError();
     setModelUrl({});
+    m_canOpenFullViewer = suffix != QStringLiteral("blend");
 
     if (suffix == QStringLiteral("fbx")) {
         updateFileInfo(info.absoluteFilePath(), QStringLiteral("FBX"));
-        startModelStatistics(info.absoluteFilePath());
         startFbxConversion(info.absoluteFilePath());
         return;
     }
@@ -202,42 +180,26 @@ void Backend::startModelStatistics(const QString &sourcePath) {
         if (exitStatus != QProcess::NormalExit || exitCode != 0)
             return;
 
-        const auto readCount = [&output](const QString &label,
-                                         qulonglong *value) {
-            const QRegularExpression expression(
-                QStringLiteral(R"(^\s*%1:\s*(\d+)\s*$)")
-                    .arg(QRegularExpression::escape(label)),
-                QRegularExpression::MultilineOption);
-            const QRegularExpressionMatch match = expression.match(output);
-            if (!match.hasMatch())
-                return false;
-
-            bool valid = false;
-            const qulonglong parsed = match.captured(1).toULongLong(&valid);
-            if (valid)
-                *value = parsed;
-            return valid;
-        };
-
-        qulonglong meshes = 0;
-        qulonglong vertices = 0;
-        qulonglong triangles = 0;
-        if (!readCount(QStringLiteral("Meshes"), &meshes)
-            || !readCount(QStringLiteral("Vertices"), &vertices)
-            || !readCount(QStringLiteral("Faces"), &triangles)) {
-            return;
-        }
-
-        const QRegularExpression triangleType(
+        static const QRegularExpression countPattern(
+            QStringLiteral(R"(^\s*(Meshes|Vertices|Faces):\s*(\d+)\s*$)"),
+            QRegularExpression::MultilineOption);
+        static const QRegularExpression triangleType(
             QStringLiteral(R"(^\s*Primitive Types:\s*triangles\s*$)"),
             QRegularExpression::MultilineOption
                 | QRegularExpression::CaseInsensitiveOption);
-        if (!triangleType.match(output).hasMatch())
+
+        QHash<QString, qulonglong> counts;
+        auto matches = countPattern.globalMatch(output);
+        while (matches.hasNext()) {
+            const QRegularExpressionMatch match = matches.next();
+            counts.insert(match.captured(1), match.captured(2).toULongLong());
+        }
+        if (counts.size() != 3 || !triangleType.match(output).hasMatch())
             return;
 
-        m_meshCount = meshes;
-        m_vertexCount = vertices;
-        m_triangleCount = triangles;
+        m_meshCount = counts.value(QStringLiteral("Meshes"));
+        m_vertexCount = counts.value(QStringLiteral("Vertices"));
+        m_triangleCount = counts.value(QStringLiteral("Faces"));
         m_modelStatsAvailable = true;
         emit modelStatsChanged();
     });
@@ -248,29 +210,79 @@ void Backend::startModelStatistics(const QString &sourcePath) {
 }
 
 void Backend::cancelModelStatistics() {
-    if (!m_statsProbe)
-        return;
-
-    disconnect(m_statsProbe, nullptr, this, nullptr);
-    if (m_statsProbe->state() != QProcess::NotRunning) {
-        m_statsProbe->kill();
-        m_statsProbe->waitForFinished(500);
-    }
-    delete m_statsProbe;
-    m_statsProbe = nullptr;
+    stopProcess(m_statsProbe);
 }
 
 void Backend::resetModelStatistics() {
-    if (!m_modelStatsAvailable && m_meshCount == 0
-        && m_vertexCount == 0 && m_triangleCount == 0) {
-        return;
-    }
-
     m_modelStatsAvailable = false;
     m_meshCount = 0;
     m_vertexCount = 0;
     m_triangleCount = 0;
     emit modelStatsChanged();
+}
+
+QString Backend::createConversionOutput(const QString &formatLabel) {
+    m_conversionDirectory = std::make_unique<QTemporaryDir>(
+        QDir::tempPath() + QStringLiteral("/oma3dviewer-XXXXXX"));
+    if (!m_conversionDirectory->isValid()) {
+        setError(QStringLiteral(
+            "Could not create a temporary directory for %1 conversion.")
+            .arg(formatLabel));
+        setStatusText(QStringLiteral("Conversion failed"));
+        m_conversionDirectory.reset();
+        return {};
+    }
+    return m_conversionDirectory->filePath(QStringLiteral("model.glb"));
+}
+
+void Backend::runConversion(const QString &program, const QStringList &arguments,
+                            const QProcessEnvironment &environment,
+                            const QString &formatLabel, const QString &toolName) {
+    const QString outputPath =
+        m_conversionDirectory->filePath(QStringLiteral("model.glb"));
+    m_converter = new QProcess(this);
+    m_converter->setProcessChannelMode(QProcess::MergedChannels);
+    m_converter->setProcessEnvironment(environment);
+
+    connect(m_converter, &QProcess::errorOccurred, this,
+            [this, toolName](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart) {
+            setBusy(false);
+            setStatusText(QStringLiteral("Conversion failed"));
+            setError(QStringLiteral("%1 could not be started.").arg(toolName));
+        }
+    });
+
+    connect(m_converter,
+            qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+            [this, outputPath, formatLabel, toolName](
+                int exitCode, QProcess::ExitStatus exitStatus) {
+        const QString processOutput = QString::fromUtf8(m_converter->readAll()).trimmed();
+        setBusy(false);
+
+        if (exitStatus == QProcess::NormalExit && exitCode == 0
+            && QFileInfo::exists(outputPath)) {
+            m_fileType = formatLabel + QStringLiteral(" · converted");
+            emit fileInfoChanged();
+            startModelStatistics(outputPath);
+            setModelUrl(QUrl::fromLocalFile(outputPath));
+            setStatusText(QStringLiteral("Loaded"));
+        } else {
+            setStatusText(QStringLiteral("Conversion failed"));
+            const QString detail = processOutput.isEmpty()
+                ? QStringLiteral("%1 could not convert this %2 file.")
+                      .arg(toolName, formatLabel)
+                : processOutput;
+            setError(detail);
+        }
+
+        m_converter->deleteLater();
+        m_converter = nullptr;
+    });
+
+    setBusy(true);
+    setStatusText(QStringLiteral("Converting %1…").arg(formatLabel));
+    m_converter->start(program, arguments);
 }
 
 void Backend::startFbxConversion(const QString &sourcePath) {
@@ -281,57 +293,15 @@ void Backend::startFbxConversion(const QString &sourcePath) {
         return;
     }
 
-    m_conversionDirectory = std::make_unique<QTemporaryDir>(
-        QDir::tempPath() + QStringLiteral("/oma3dviewer-XXXXXX"));
-    if (!m_conversionDirectory->isValid()) {
-        setError(QStringLiteral("Could not create a temporary directory for FBX conversion."));
-        setStatusText(QStringLiteral("Conversion failed"));
-        m_conversionDirectory.reset();
+    const QString outputPath = createConversionOutput(QStringLiteral("FBX"));
+    if (outputPath.isEmpty())
         return;
-    }
 
-    const QString outputPath = m_conversionDirectory->filePath(QStringLiteral("model.glb"));
-    m_converter = new QProcess(this);
-    m_converter->setProcessChannelMode(QProcess::MergedChannels);
-
-    connect(m_converter, &QProcess::errorOccurred, this,
-            [this](QProcess::ProcessError error) {
-        if (error == QProcess::FailedToStart) {
-            setBusy(false);
-            setStatusText(QStringLiteral("Conversion failed"));
-            setError(QStringLiteral("Assimp could not be started."));
-        }
-    });
-
-    connect(m_converter,
-            qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
-            [this, outputPath](int exitCode, QProcess::ExitStatus exitStatus) {
-        const QString processOutput = QString::fromUtf8(m_converter->readAll()).trimmed();
-        setBusy(false);
-
-        if (exitStatus == QProcess::NormalExit && exitCode == 0
-            && QFileInfo::exists(outputPath)) {
-            m_fileType = QStringLiteral("FBX · converted");
-            emit fileInfoChanged();
-            setModelUrl(QUrl::fromLocalFile(outputPath));
-            setStatusText(QStringLiteral("Loaded"));
-        } else {
-            setStatusText(QStringLiteral("Conversion failed"));
-            const QString detail = processOutput.isEmpty()
-                ? QStringLiteral("Assimp could not convert this FBX file.")
-                : processOutput;
-            setError(detail);
-        }
-
-        m_converter->deleteLater();
-        m_converter = nullptr;
-    });
-
-    setBusy(true);
-    setStatusText(QStringLiteral("Converting FBX…"));
-    m_converter->start(assimp, {
-        QStringLiteral("export"), sourcePath, outputPath, QStringLiteral("-fglb2")
-    });
+    runConversion(assimp,
+                  {QStringLiteral("export"), sourcePath, outputPath,
+                   QStringLiteral("-fglb2")},
+                  QProcessEnvironment::systemEnvironment(),
+                  QStringLiteral("FBX"), QStringLiteral("Assimp"));
 }
 
 void Backend::startBlendConversion(const QString &sourcePath) {
@@ -343,19 +313,9 @@ void Backend::startBlendConversion(const QString &sourcePath) {
         return;
     }
 
-    m_conversionDirectory = std::make_unique<QTemporaryDir>(
-        QDir::tempPath() + QStringLiteral("/oma3dviewer-XXXXXX"));
-    if (!m_conversionDirectory->isValid()) {
-        setError(QStringLiteral(
-            "Could not create a temporary directory for Blender conversion."));
-        setStatusText(QStringLiteral("Conversion failed"));
-        m_conversionDirectory.reset();
+    const QString outputPath = createConversionOutput(QStringLiteral("BLEND"));
+    if (outputPath.isEmpty())
         return;
-    }
-
-    const QString outputPath = m_conversionDirectory->filePath(QStringLiteral("model.glb"));
-    m_converter = new QProcess(this);
-    m_converter->setProcessChannelMode(QProcess::MergedChannels);
 
     QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
     const QString blenderDirectory = QFileInfo(blender).absolutePath();
@@ -380,41 +340,6 @@ void Backend::startBlendConversion(const QString &sourcePath) {
     }
     environment.insert(QStringLiteral("ALSOFT_DRIVERS"), QStringLiteral("null"));
     environment.insert(QStringLiteral("OMA3DVIEWER_BLEND_OUTPUT"), outputPath);
-    m_converter->setProcessEnvironment(environment);
-
-    connect(m_converter, &QProcess::errorOccurred, this,
-            [this](QProcess::ProcessError error) {
-        if (error == QProcess::FailedToStart) {
-            setBusy(false);
-            setStatusText(QStringLiteral("Conversion failed"));
-            setError(QStringLiteral("Blender could not be started."));
-        }
-    });
-
-    connect(m_converter,
-            qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
-            [this, outputPath](int exitCode, QProcess::ExitStatus exitStatus) {
-        const QString processOutput = QString::fromUtf8(m_converter->readAll()).trimmed();
-        setBusy(false);
-
-        if (exitStatus == QProcess::NormalExit && exitCode == 0
-            && QFileInfo::exists(outputPath)) {
-            m_fileType = QStringLiteral("BLEND · converted");
-            emit fileInfoChanged();
-            startModelStatistics(outputPath);
-            setModelUrl(QUrl::fromLocalFile(outputPath));
-            setStatusText(QStringLiteral("Loaded"));
-        } else {
-            setStatusText(QStringLiteral("Conversion failed"));
-            const QString detail = processOutput.isEmpty()
-                ? QStringLiteral("Blender could not convert this BLEND file.")
-                : processOutput;
-            setError(detail);
-        }
-
-        m_converter->deleteLater();
-        m_converter = nullptr;
-    });
 
     const QString exportScript = QStringLiteral(
         "import bpy, os\n"
@@ -423,9 +348,7 @@ void Backend::startBlendConversion(const QString &sourcePath) {
         "if 'FINISHED' not in result:\n"
         "    raise RuntimeError('glTF export failed: ' + repr(result))\n");
 
-    setBusy(true);
-    setStatusText(QStringLiteral("Converting BLEND…"));
-    m_converter->start(blender, {
+    runConversion(blender, {
         QStringLiteral("--background"),
         QStringLiteral("--factory-startup"),
         QStringLiteral("--disable-autoexec"),
@@ -434,19 +357,11 @@ void Backend::startBlendConversion(const QString &sourcePath) {
         QStringLiteral("-noaudio"),
         QStringLiteral("--python-exit-code"), QStringLiteral("1"),
         QStringLiteral("--python-expr"), exportScript
-    });
+    }, environment, QStringLiteral("BLEND"), QStringLiteral("Blender"));
 }
 
 void Backend::cancelConversion() {
-    if (m_converter) {
-        disconnect(m_converter, nullptr, this, nullptr);
-        if (m_converter->state() != QProcess::NotRunning) {
-            m_converter->kill();
-            m_converter->waitForFinished(500);
-        }
-        delete m_converter;
-        m_converter = nullptr;
-    }
+    stopProcess(m_converter);
     m_conversionDirectory.reset();
     setBusy(false);
 }
@@ -499,10 +414,10 @@ QVariantMap Backend::windowGeometry() const {
     settings.beginGroup(QString::fromLatin1(geometryGroup));
     QVariantMap result;
     result.insert(QStringLiteral("valid"), settings.contains(QStringLiteral("width")));
-    result.insert(QStringLiteral("x"), settings.value(QStringLiteral("x"), 80));
-    result.insert(QStringLiteral("y"), settings.value(QStringLiteral("y"), 80));
-    result.insert(QStringLiteral("width"), settings.value(QStringLiteral("width"), 1100));
-    result.insert(QStringLiteral("height"), settings.value(QStringLiteral("height"), 720));
+    result.insert(QStringLiteral("x"), settings.value(QStringLiteral("x")));
+    result.insert(QStringLiteral("y"), settings.value(QStringLiteral("y")));
+    result.insert(QStringLiteral("width"), settings.value(QStringLiteral("width")));
+    result.insert(QStringLiteral("height"), settings.value(QStringLiteral("height")));
     result.insert(QStringLiteral("maximized"), settings.value(QStringLiteral("maximized"), false));
     settings.endGroup();
     return result;

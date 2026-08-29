@@ -4,11 +4,9 @@ import QtQuick.Controls
 Button {
     id: control
 
-    property color inkColor: "white"
-    property color mutedColor: "#888888"
-    property color accentColor: "#7aa2f7"
-    property color surfaceColor: "#222222"
-    property bool outlined: false
+    property color inkColor: systemTheme.inkColor
+    property color mutedColor: systemTheme.mutedColor
+    property color accentColor: systemTheme.accentColor
 
     implicitHeight: 38
     implicitWidth: Math.max(58, contentItem.implicitWidth + 24)

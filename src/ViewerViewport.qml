@@ -17,7 +17,6 @@ Item {
     // shader's internal Z line is presented as Blender's green ground axis.
     property color xAxisColor: "#ff3352"
     property color zAxisColor: "#8bdc00"
-    property real gridLineWidth: 1.0
     property bool gridVisible: true
     property bool axesVisible: true
     property bool lightingEnabled: true
@@ -144,10 +143,6 @@ Item {
         }
     }
 
-    function grabPreview(callback, targetSize) {
-        return view.grabToImage(callback, targetSize)
-    }
-
     View3D {
         id: view
         anchors.fill: parent
@@ -235,7 +230,7 @@ Item {
                 destinationBlend: CustomMaterial.OneMinusSrcAlpha
 
                 property real gridSpacing: root.gridInterval
-                property real gridPixelWidth: Math.max(0.5, root.gridLineWidth)
+                property real gridPixelWidth: 1.0
                 property real gridEnabled: root.gridVisible ? 1.0 : 0.0
                 property real axesEnabled: root.axesVisible ? 1.0 : 0.0
                 property color minorGridColor: root.gridMinorColor

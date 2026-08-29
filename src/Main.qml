@@ -31,12 +31,6 @@ ApplicationWindow {
         ? backend.errorMessage
         : (!errorDismissed ? viewport.loadError : "")
 
-    function mixColors(base, tint, amount) {
-        return Qt.rgba(base.r + (tint.r - base.r) * amount,
-                       base.g + (tint.g - base.g) * amount,
-                       base.b + (tint.b - base.b) * amount, 1)
-    }
-
     function trackNormalGeometry() {
         if (visibility === Window.Windowed)
             normalGeometry = Qt.rect(x, y, width, height)
@@ -47,7 +41,8 @@ ApplicationWindow {
         title: "Open a 3D model"
         fileMode: FileDialog.OpenFile
         nameFilters: [
-            "3D models (*.glb *.gltf *.obj *.fbx)",
+            "3D models (" + backend.supportedExtensions.map(
+                                ext => "*." + ext).join(" ") + ")",
             "glTF models (*.glb *.gltf)",
             "Wavefront models (*.obj)",
             "FBX models (*.fbx)"
@@ -74,11 +69,7 @@ ApplicationWindow {
         }
     }
     Shortcut {
-        sequence: "F"
-        onActivated: viewport.frameModel()
-    }
-    Shortcut {
-        sequence: "R"
+        sequences: ["F", "R"]
         onActivated: viewport.frameModel()
     }
     Shortcut {
@@ -108,7 +99,7 @@ ApplicationWindow {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 height: 1
-                color: win.mixColors(systemTheme.pageColor, systemTheme.inkColor, 0.12)
+                color: systemTheme.mix(systemTheme.pageColor, systemTheme.inkColor, 0.12)
             }
 
             RowLayout {
@@ -130,7 +121,7 @@ ApplicationWindow {
                 Rectangle {
                     Layout.preferredWidth: 1
                     Layout.preferredHeight: 18
-                    color: win.mixColors(systemTheme.pageColor, systemTheme.inkColor, 0.18)
+                    color: systemTheme.mix(systemTheme.pageColor, systemTheme.inkColor, 0.18)
                 }
 
                 Text {
@@ -150,26 +141,18 @@ ApplicationWindow {
                     checkable: true
                     checked: true
                     ButtonGroup.group: lightingModeGroup
-                    inkColor: systemTheme.inkColor
-                    mutedColor: systemTheme.mutedColor
-                    accentColor: systemTheme.accentColor
-                    surfaceColor: systemTheme.pageColor
                 }
 
                 RailButton {
                     text: "UNLIT"
                     checkable: true
                     ButtonGroup.group: lightingModeGroup
-                    inkColor: systemTheme.inkColor
-                    mutedColor: systemTheme.mutedColor
-                    accentColor: systemTheme.accentColor
-                    surfaceColor: systemTheme.pageColor
                 }
 
                 Rectangle {
                     Layout.preferredWidth: 1
                     Layout.preferredHeight: 18
-                    color: win.mixColors(systemTheme.pageColor,
+                    color: systemTheme.mix(systemTheme.pageColor,
                                          systemTheme.inkColor, 0.18)
                 }
 
@@ -177,10 +160,6 @@ ApplicationWindow {
                     text: "GRID"
                     checkable: true
                     checked: win.gridVisible
-                    inkColor: systemTheme.inkColor
-                    mutedColor: systemTheme.mutedColor
-                    accentColor: systemTheme.accentColor
-                    surfaceColor: systemTheme.pageColor
                     onClicked: win.gridVisible = checked
                 }
 
@@ -188,29 +167,17 @@ ApplicationWindow {
                     text: "AXES"
                     checkable: true
                     checked: win.axesVisible
-                    inkColor: systemTheme.inkColor
-                    mutedColor: systemTheme.mutedColor
-                    accentColor: systemTheme.accentColor
-                    surfaceColor: systemTheme.pageColor
                     onClicked: win.axesVisible = checked
                 }
 
                 RailButton {
                     text: "FRAME"
                     enabled: viewport.loaded
-                    inkColor: systemTheme.inkColor
-                    mutedColor: systemTheme.mutedColor
-                    accentColor: systemTheme.accentColor
-                    surfaceColor: systemTheme.pageColor
                     onClicked: viewport.frameModel()
                 }
 
                 RailButton {
                     text: "OPEN"
-                    inkColor: systemTheme.inkColor
-                    mutedColor: systemTheme.mutedColor
-                    accentColor: systemTheme.accentColor
-                    surfaceColor: systemTheme.pageColor
                     onClicked: openDialog.open()
                 }
             }
@@ -288,7 +255,7 @@ ApplicationWindow {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "GLB  ·  GLTF  ·  OBJ  ·  FBX"
+                    text: backend.supportedExtensions.join("  ·  ").toUpperCase()
                     color: systemTheme.mutedColor
                     font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 10
@@ -299,10 +266,6 @@ ApplicationWindow {
                 RailButton {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "OPEN MODEL"
-                    inkColor: systemTheme.inkColor
-                    mutedColor: systemTheme.mutedColor
-                    accentColor: systemTheme.accentColor
-                    surfaceColor: systemTheme.stageColor
                     onClicked: openDialog.open()
                 }
             }
@@ -342,25 +305,27 @@ ApplicationWindow {
                 property color statsColor: Qt.rgba(systemTheme.inkColor.r,
                                                     systemTheme.inkColor.g,
                                                     systemTheme.inkColor.b, 0.48)
+                readonly property var statsLocale: Qt.locale("en_US")
+
+                function formatCount(value) {
+                    return Number(value).toLocaleString(statsLocale, "f", 0)
+                }
 
                 BottomLabelPair {
                     keyText: "MESHES"
-                    valueText: Number(backend.meshCount).toLocaleString(
-                                   Qt.locale("en_US"), "f", 0)
+                    valueText: parent.formatCount(backend.meshCount)
                     textColor: parent.statsColor
                 }
 
                 BottomLabelPair {
                     keyText: "VERTICES"
-                    valueText: Number(backend.vertexCount).toLocaleString(
-                                   Qt.locale("en_US"), "f", 0)
+                    valueText: parent.formatCount(backend.vertexCount)
                     textColor: parent.statsColor
                 }
 
                 BottomLabelPair {
                     keyText: "TRIANGLES"
-                    valueText: Number(backend.triangleCount).toLocaleString(
-                                   Qt.locale("en_US"), "f", 0)
+                    valueText: parent.formatCount(backend.triangleCount)
                     textColor: parent.statsColor
                 }
             }
@@ -372,7 +337,7 @@ ApplicationWindow {
                 anchors.margins: 14
                 height: errorRow.implicitHeight + 18
                 visible: win.visibleError !== ""
-                color: win.mixColors(systemTheme.stageColor, systemTheme.errorColor, 0.12)
+                color: systemTheme.mix(systemTheme.stageColor, systemTheme.errorColor, 0.12)
                 border.width: 1
                 border.color: systemTheme.errorColor
                 radius: 2
@@ -407,10 +372,7 @@ ApplicationWindow {
 
                     RailButton {
                         text: "CLOSE"
-                        inkColor: systemTheme.inkColor
-                        mutedColor: systemTheme.mutedColor
                         accentColor: systemTheme.errorColor
-                        surfaceColor: systemTheme.stageColor
                         onClicked: {
                             backend.clearError()
                             win.errorDismissed = true

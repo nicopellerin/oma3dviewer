@@ -28,12 +28,6 @@ Window {
     readonly property int selectLeft: 4
     readonly property int selectRight: 5
 
-    function mixColors(base, tint, amount) {
-        return Qt.rgba(base.r + (tint.r - base.r) * amount,
-                       base.g + (tint.g - base.g) * amount,
-                       base.b + (tint.b - base.b) * amount, 1)
-    }
-
     Shortcut {
         sequence: "Up"
         context: Qt.ApplicationShortcut
@@ -59,13 +53,7 @@ Window {
     }
 
     Shortcut {
-        sequence: "Space"
-        context: Qt.ApplicationShortcut
-        onActivated: backend.closePreview()
-    }
-
-    Shortcut {
-        sequence: "Escape"
+        sequences: ["Space", "Escape"]
         context: Qt.ApplicationShortcut
         onActivated: backend.closePreview()
     }
@@ -84,7 +72,7 @@ Window {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 54
-                color: previewWindow.mixColors(systemTheme.stageColor,
+                color: systemTheme.mix(systemTheme.stageColor,
                                                systemTheme.pageColor, 0.55)
 
                 Rectangle {
@@ -92,7 +80,7 @@ Window {
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     height: 1
-                    color: previewWindow.mixColors(systemTheme.stageColor,
+                    color: systemTheme.mix(systemTheme.stageColor,
                                                    systemTheme.inkColor, 0.16)
                 }
 
@@ -116,13 +104,8 @@ Window {
 
                     RailButton {
                         text: "OPEN WITH OMA3DVIEWER"
-                        visible: !backend.fileType.startsWith("BLEND")
+                        visible: backend.canOpenFullViewer
                         focusPolicy: Qt.NoFocus
-                        outlined: true
-                        inkColor: systemTheme.inkColor
-                        mutedColor: systemTheme.mutedColor
-                        accentColor: systemTheme.accentColor
-                        surfaceColor: systemTheme.pageColor
                         onClicked: backend.openFullViewer()
                     }
                 }
@@ -148,6 +131,7 @@ Window {
                 }
 
                 Rectangle {
+                    id: loadingCover
                     anchors.fill: parent
                     visible: backend.busy || !viewport.frameReady
                     // Keep the covered View3D rendering so RuntimeLoader can
@@ -162,7 +146,7 @@ Window {
 
                         BusyIndicator {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            running: parent.parent.visible
+                            running: loadingCover.visible
                             implicitWidth: 30
                             implicitHeight: 30
                             Material.accent: systemTheme.accentColor
@@ -187,7 +171,7 @@ Window {
                     anchors.margins: 14
                     height: errorText.implicitHeight + 24
                     visible: previewWindow.visibleError !== ""
-                    color: previewWindow.mixColors(systemTheme.stageColor,
+                    color: systemTheme.mix(systemTheme.stageColor,
                                                    systemTheme.errorColor, 0.14)
                     border.width: 1
                     border.color: systemTheme.errorColor

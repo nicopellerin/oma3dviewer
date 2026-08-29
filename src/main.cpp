@@ -30,20 +30,17 @@ QString previewSocketPath() {
   return QDir(directory).filePath(QStringLiteral("oma3dviewer-preview.sock"));
 }
 
-QByteArray previewCommand(const QString &command, const QString &path = {}) {
-  QJsonObject object{{QStringLiteral("command"), command}};
-  if (!path.isEmpty())
-    object.insert(QStringLiteral("path"), path);
-  return QJsonDocument(object).toJson(QJsonDocument::Compact) + '\n';
-}
-
 bool sendPreviewCommand(const QString &command, const QString &path = {}) {
   QLocalSocket socket;
   socket.connectToServer(previewSocketPath());
   if (!socket.waitForConnected(350))
     return false;
 
-  const QByteArray payload = previewCommand(command, path);
+  QJsonObject object{{QStringLiteral("command"), command}};
+  if (!path.isEmpty())
+    object.insert(QStringLiteral("path"), path);
+  const QByteArray payload =
+      QJsonDocument(object).toJson(QJsonDocument::Compact) + '\n';
   if (socket.write(payload) != payload.size())
     return false;
   if (socket.bytesToWrite() > 0 && !socket.waitForBytesWritten(500))
@@ -60,7 +57,7 @@ int main(int argc, char *argv[]) {
   QGuiApplication app(argc, argv);
   app.setApplicationName(QStringLiteral("oma3dviewer"));
   app.setApplicationDisplayName(QStringLiteral("oma3dviewer"));
-  app.setApplicationVersion(QStringLiteral("0.1.0"));
+  app.setApplicationVersion(QStringLiteral("0.1.1"));
   app.setOrganizationName(QStringLiteral("nicopellerin"));
   app.setOrganizationDomain(QStringLiteral("nicopellerin.io"));
   app.setDesktopFileName(QStringLiteral("oma3dviewer"));

@@ -23,6 +23,8 @@ class Backend final : public QObject {
     Q_PROPERTY(qulonglong meshCount READ meshCount NOTIFY modelStatsChanged)
     Q_PROPERTY(qulonglong vertexCount READ vertexCount NOTIFY modelStatsChanged)
     Q_PROPERTY(qulonglong triangleCount READ triangleCount NOTIFY modelStatsChanged)
+    Q_PROPERTY(QStringList supportedExtensions READ supportedExtensions CONSTANT)
+    Q_PROPERTY(bool canOpenFullViewer READ canOpenFullViewer NOTIFY fileInfoChanged)
 
 public:
     explicit Backend(bool blendPreviewEnabled = false,
@@ -42,11 +44,12 @@ public:
     qulonglong meshCount() const { return m_meshCount; }
     qulonglong vertexCount() const { return m_vertexCount; }
     qulonglong triangleCount() const { return m_triangleCount; }
+    QStringList supportedExtensions() const;
+    bool canOpenFullViewer() const { return m_canOpenFullViewer; }
 
     Q_INVOKABLE void openFile(const QUrl &url);
     Q_INVOKABLE void openPath(const QString &path);
     Q_INVOKABLE bool acceptsUrl(const QUrl &url) const;
-    Q_INVOKABLE QVariantMap modelBounds() const;
     Q_INVOKABLE void openFullViewer();
     Q_INVOKABLE void closePreview();
     Q_INVOKABLE void navigatePreview(int direction);
@@ -67,6 +70,10 @@ private:
     bool isSupportedExtension(const QString &suffix) const;
     void startFbxConversion(const QString &sourcePath);
     void startBlendConversion(const QString &sourcePath);
+    QString createConversionOutput(const QString &formatLabel);
+    void runConversion(const QString &program, const QStringList &arguments,
+                       const QProcessEnvironment &environment,
+                       const QString &formatLabel, const QString &toolName);
     void cancelConversion();
     void startModelStatistics(const QString &sourcePath);
     void cancelModelStatistics();
@@ -86,6 +93,7 @@ private:
     QString m_statusText = QStringLiteral("Ready");
     QString m_errorMessage;
     bool m_blendPreviewEnabled = false;
+    bool m_canOpenFullViewer = false;
     bool m_busy = false;
     bool m_modelStatsAvailable = false;
     qulonglong m_meshCount = 0;
