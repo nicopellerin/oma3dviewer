@@ -20,6 +20,7 @@ Item {
     property real gridLineWidth: 1.0
     property bool gridVisible: true
     property bool axesVisible: true
+    property bool lightingEnabled: true
     property bool overlaysVisible: true
     property bool autoFrameOnResize: false
     property bool interactive: true
@@ -124,6 +125,25 @@ Item {
         frameTimer.restart()
     }
 
+    function applyFallbackMaterials(object) {
+        if (!object)
+            return
+
+        if (object.hasOwnProperty("materials")
+                && object.materials.length === 0) {
+            // glTF's implicit material is fully metallic, so its brightness
+            // can shift as the view moves. Keep authored materials intact and
+            // give only material-less meshes a stable neutral surface.
+            object.materials.push(fallbackMaterial)
+        }
+
+        for (var childIndex = 0;
+                childIndex < object.children.length;
+                ++childIndex) {
+            applyFallbackMaterials(object.children[childIndex])
+        }
+    }
+
     function grabPreview(callback, targetSize) {
         return view.grabToImage(callback, targetSize)
     }
@@ -140,12 +160,15 @@ Item {
             antialiasingQuality: SceneEnvironment.High
             specularAAEnabled: true
             tonemapMode: SceneEnvironment.TonemapModeAces
-            aoEnabled: true
-            aoStrength: 20
-            aoDistance: Math.max(0.001, root.boundsDiameter * 0.08)
-            aoSoftness: 40
-            aoSampleRate: 3
-            aoDither: true
+            // Screen-space AO changes with projected model size, making the
+            // same material appear lighter or darker while zooming.
+            aoEnabled: false
+        }
+
+        DefaultMaterial {
+            id: fallbackMaterial
+            diffuseColor: "#b8b8b8"
+            specularAmount: 0
         }
 
         Node {
@@ -159,6 +182,25 @@ Item {
                 fieldOfView: 42
                 clipNear: 0.1
                 clipFar: 10000
+
+                // Camera-relative lights provide matcap-like form shading.
+                // Their high ambient fill keeps rear surfaces readable.
+                DirectionalLight {
+                    visible: !root.lightingEnabled
+                    eulerRotation: Qt.vector3d(-18, 24, 0)
+                    brightness: 0.48
+                    color: "#f4f4f4"
+                    ambientColor: Qt.rgba(0.32, 0.32, 0.34, 1)
+                    castsShadow: false
+                }
+
+                DirectionalLight {
+                    visible: !root.lightingEnabled
+                    eulerRotation: Qt.vector3d(22, -145, 0)
+                    brightness: 0.16
+                    color: "#d8d8dc"
+                    castsShadow: false
+                }
             }
         }
 
@@ -207,29 +249,34 @@ Item {
         }
 
         DirectionalLight {
+            visible: root.lightingEnabled
             eulerRotation: Qt.vector3d(-42, -35, 0)
-            brightness: 1.35
+            brightness: 0.95
             color: "#fff8f0"
-            ambientColor: Qt.rgba(0.13, 0.14, 0.17, 1)
+            ambientColor: Qt.rgba(0.07, 0.075, 0.09, 1)
             castsShadow: true
             shadowFactor: 52
             shadowMapQuality: Light.ShadowMapQualityHigh
-            shadowMapFar: Math.max(1, root.boundsDiameter * 4)
+            // Keep the model inside the shadow map as the orbit camera dollies.
+            shadowMapFar: Math.max(1,
+                                   camera.position.z + root.boundsDiameter * 4)
             shadowBias: Math.max(0.0001, root.boundsDiameter * 0.001)
             softShadowQuality: Light.PCF16
             pcfFactor: Math.max(0.001, root.boundsDiameter * 0.008)
         }
 
         DirectionalLight {
+            visible: root.lightingEnabled
             eulerRotation: Qt.vector3d(-12, 58, 0)
-            brightness: 0.5
+            brightness: 0.28
             color: "#e8f0ff"
             castsShadow: false
         }
 
         DirectionalLight {
+            visible: root.lightingEnabled
             eulerRotation: Qt.vector3d(28, 155, 0)
-            brightness: 0.3
+            brightness: 0.14
             color: "#ffffff"
             castsShadow: false
         }
@@ -239,15 +286,28 @@ Item {
             source: root.source
             onSourceChanged: {
                 frameTimer.stop()
+                materialTimer.stop()
                 root.frameRetryCount = 0
                 root.frameReady = false
             }
             onBoundsChanged: root.scheduleFrame()
-            onStatusChanged: {
+            onChildrenChanged: {
                 if (status === RuntimeLoader.Success)
+                    materialTimer.restart()
+            }
+            onStatusChanged: {
+                if (status === RuntimeLoader.Success) {
                     root.scheduleFrame()
+                    materialTimer.restart()
+                }
             }
         }
+    }
+
+    Timer {
+        id: materialTimer
+        interval: 0
+        onTriggered: root.applyFallbackMaterials(modelLoader)
     }
 
     Timer {

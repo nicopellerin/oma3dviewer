@@ -26,6 +26,7 @@ ApplicationWindow {
     property bool errorDismissed: false
     property rect normalGeometry: Qt.rect(x, y, width, height)
     property bool wasMaximized: false
+    readonly property bool lightingEnabled: litModeButton.checked
     readonly property string visibleError: backend.errorMessage !== ""
         ? backend.errorMessage
         : (!errorDismissed ? viewport.loadError : "")
@@ -52,6 +53,11 @@ ApplicationWindow {
             "FBX models (*.fbx)"
         ]
         onAccepted: backend.openFile(selectedFile)
+    }
+
+    ButtonGroup {
+        id: lightingModeGroup
+        exclusive: true
     }
 
     Shortcut {
@@ -139,6 +145,35 @@ ApplicationWindow {
                 }
 
                 RailButton {
+                    id: litModeButton
+                    text: "LIT"
+                    checkable: true
+                    checked: true
+                    ButtonGroup.group: lightingModeGroup
+                    inkColor: systemTheme.inkColor
+                    mutedColor: systemTheme.mutedColor
+                    accentColor: systemTheme.accentColor
+                    surfaceColor: systemTheme.pageColor
+                }
+
+                RailButton {
+                    text: "UNLIT"
+                    checkable: true
+                    ButtonGroup.group: lightingModeGroup
+                    inkColor: systemTheme.inkColor
+                    mutedColor: systemTheme.mutedColor
+                    accentColor: systemTheme.accentColor
+                    surfaceColor: systemTheme.pageColor
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 18
+                    color: win.mixColors(systemTheme.pageColor,
+                                         systemTheme.inkColor, 0.18)
+                }
+
+                RailButton {
                     text: "GRID"
                     checkable: true
                     checked: win.gridVisible
@@ -196,6 +231,7 @@ ApplicationWindow {
                 accentColor: systemTheme.accentColor
                 gridVisible: win.gridVisible
                 axesVisible: win.axesVisible
+                lightingEnabled: win.lightingEnabled
             }
 
             DropArea {
