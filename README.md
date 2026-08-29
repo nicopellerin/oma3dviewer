@@ -1,6 +1,8 @@
 # Omagltf
 
-A focused 3D model viewer for Omarchy. Omagltf opens GLB, glTF, and OBJ assets.
+A 3D model viewer for Omarchy. Omagltf opens GLB, glTF and OBJ assets.
+
+![Omagltf displaying a 3D model](viewer-demo.png)
 
 ## Install on Omarchy
 
