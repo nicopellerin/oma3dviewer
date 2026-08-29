@@ -1,0 +1,25 @@
+pkgbase = omagltf
+	pkgdesc = Focused GLB, glTF, FBX, and OBJ viewer built with Qt Quick 3D
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/nicopellerin/omagltf
+	install = omagltf.install
+	arch = x86_64
+	license = MIT
+	license = OFL-1.1
+	makedepends = gcc
+	makedepends = make
+	depends = assimp
+	depends = hicolor-icon-theme
+	depends = qt6-base
+	depends = qt6-declarative
+	depends = qt6-quick3d
+	depends = shared-mime-info
+	depends = sushi
+	depends = xdg-desktop-portal
+	conflicts = omaviewer
+	replaces = omaviewer
+	source = omagltf-0.1.0.tar.gz::https://github.com/nicopellerin/omagltf/archive/refs/tags/v0.1.0.tar.gz
+	sha256sums = 02f70bb6e98849aec2408a31c59b01f63fd6d3a37d0a0a2b449ac7a8702f553d
+
+pkgname = omagltf

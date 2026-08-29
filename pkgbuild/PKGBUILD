@@ -19,16 +19,16 @@ depends=(
 )
 makedepends=('gcc' 'make')
 install=omagltf.install
-source=()
-sha256sums=()
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('02f70bb6e98849aec2408a31c59b01f63fd6d3a37d0a0a2b449ac7a8702f553d')
 
 build() {
-  cd "$startdir/.."
+  cd "$srcdir/$pkgname-$pkgver"
   ./bin/build
 }
 
 package() {
-  local repo_root="$startdir/.."
+  local repo_root="$srcdir/$pkgname-$pkgver"
 
   install -Dm755 "$repo_root/build/omagltf" \
     "$pkgdir/usr/bin/omagltf"
