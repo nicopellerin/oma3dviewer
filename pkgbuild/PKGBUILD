@@ -1,5 +1,5 @@
 pkgname=oma3dviewer
-pkgver=0.1.3
+pkgver=0.1.4
 pkgrel=1
 pkgdesc='Focused GLB, glTF, FBX, and OBJ viewer built with Qt Quick 3D'
 arch=('x86_64')

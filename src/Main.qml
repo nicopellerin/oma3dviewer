@@ -202,6 +202,7 @@ ApplicationWindow {
                 gridVisible: win.gridVisible
                 axesVisible: win.axesVisible
                 lightingEnabled: win.lightingEnabled
+                frameOnOrigin: true
             }
 
             DropArea {

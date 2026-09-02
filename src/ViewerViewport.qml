@@ -23,6 +23,10 @@ Item {
     property bool lightingEnabled: true
     property bool overlaysVisible: true
     property bool autoFrameOnResize: false
+    // Frame around the world origin (where the axes cross) instead of the
+    // bounding-box centre whenever the origin lies inside the model's
+    // bounds, so a scene built around the origin sits centred on screen.
+    property bool frameOnOrigin: false
     property bool interactive: true
 
     readonly property bool loaded: modelLoader.status === RuntimeLoader.Success
@@ -31,6 +35,10 @@ Item {
     property vector3d boundsCenter: Qt.vector3d(0, 0, 0)
     property real boundsDiameter: 100
     property bool frameReady: false
+    // Set once the user orbits, pans or zooms; automatic reframing on
+    // resize stops so it does not snap the view back.
+    property bool userAdjusted: false
+    property bool framingInProgress: false
     property int frameRetryCount: 0
     readonly property real defaultCameraPitch: 25
     readonly property real defaultCameraYaw: 35
@@ -64,6 +72,14 @@ Item {
             (maximum.z + minimum.z) / 2)
         boundsDiameter = diameter
 
+        // Only the horizontal footprint has to contain the origin; a floor
+        // that sits fractionally above zero should not disable this.
+        var target = boundsCenter
+        if (frameOnOrigin
+                && minimum.x <= 0 && maximum.x >= 0
+                && minimum.z <= 0 && maximum.z >= 0)
+            target = Qt.vector3d(0, Math.min(Math.max(0, minimum.y), maximum.y), 0)
+
         var aspect = Math.max(0.01, view.width / Math.max(1, view.height))
         var verticalHalfFov = camera.fieldOfView * Math.PI / 360
         var horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * aspect)
@@ -75,9 +91,6 @@ Item {
         var sinPitch = Math.sin(pitch)
         var cosYaw = Math.cos(yaw)
         var sinYaw = Math.sin(yaw)
-        var halfX = size.x / 2
-        var halfY = size.y / 2
-        var halfZ = size.z / 2
         var distance = 0
         var nearestDepth = -Infinity
         var farthestDepth = Infinity
@@ -86,9 +99,11 @@ Item {
         for (var xi = -1; xi <= 1; xi += 2) {
             for (var yi = -1; yi <= 1; yi += 2) {
                 for (var zi = -1; zi <= 1; zi += 2) {
-                    var x = xi * halfX
-                    var y = yi * halfY
-                    var z = zi * halfZ
+                    // Box corners relative to the framing target; the box
+                    // is not symmetric about it when framing on the origin.
+                    var x = (xi < 0 ? minimum.x : maximum.x) - target.x
+                    var y = (yi < 0 ? minimum.y : maximum.y) - target.y
+                    var z = (zi < 0 ? minimum.z : maximum.z) - target.z
                     var viewX = cosYaw * x + sinYaw * z
                     var yawZ = -sinYaw * x + cosYaw * z
                     var viewY = cosPitch * y - sinPitch * yawZ
@@ -104,11 +119,13 @@ Item {
         }
         distance = Math.max(distance, diameter * 0.05)
 
-        orbitOrigin.position = boundsCenter
+        framingInProgress = true
+        orbitOrigin.position = target
         orbitOrigin.eulerRotation = Qt.vector3d(-defaultCameraPitch,
                                                 defaultCameraYaw, 0)
         camera.position = Qt.vector3d(0, 0, Math.max(0.001, distance))
         camera.eulerRotation = Qt.vector3d(0, 0, 0)
+        framingInProgress = false
         camera.clipNear = Math.max(0.0001,
                                    (distance - nearestDepth) * 0.25)
         var modelClipFar = distance - farthestDepth + diameter * 2
@@ -118,6 +135,11 @@ Item {
                                   gridClipFar)
         frameReady = true
         return true
+    }
+
+    function noteCameraChange() {
+        if (!framingInProgress && frameReady)
+            userAdjusted = true
     }
 
     function scheduleFrame() {
@@ -177,10 +199,13 @@ Item {
             id: orbitOrigin
             eulerRotation: Qt.vector3d(-root.defaultCameraPitch,
                                        root.defaultCameraYaw, 0)
+            onPositionChanged: root.noteCameraChange()
+            onEulerRotationChanged: root.noteCameraChange()
 
             PerspectiveCamera {
                 id: camera
                 position: Qt.vector3d(0, 0, 200)
+                onPositionChanged: root.noteCameraChange()
                 fieldOfView: 42
                 clipNear: 0.1
                 clipFar: 10000
@@ -291,6 +316,7 @@ Item {
                 materialTimer.stop()
                 root.frameRetryCount = 0
                 root.frameReady = false
+                root.userAdjusted = false
                 // RuntimeLoader emits statusChanged (and, for cached assets,
                 // boundsChanged) before sourceChanged, so a load that already
                 // finished must be re-armed here or framing never runs.
@@ -337,12 +363,12 @@ Item {
     }
 
     onWidthChanged: {
-        if (autoFrameOnResize && loaded)
+        if (autoFrameOnResize && loaded && !userAdjusted)
             scheduleFrame()
     }
 
     onHeightChanged: {
-        if (autoFrameOnResize && loaded)
+        if (autoFrameOnResize && loaded && !userAdjusted)
             scheduleFrame()
     }
 

@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   QGuiApplication app(argc, argv);
   app.setApplicationName(QStringLiteral("oma3dviewer"));
   app.setApplicationDisplayName(QStringLiteral("oma3dviewer"));
-  app.setApplicationVersion(QStringLiteral("0.1.3"));
+  app.setApplicationVersion(QStringLiteral("0.1.4"));
   app.setOrganizationName(QStringLiteral("nicopellerin"));
   app.setOrganizationDomain(QStringLiteral("nicopellerin.io"));
   app.setDesktopFileName(QStringLiteral("oma3dviewer"));

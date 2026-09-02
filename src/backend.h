@@ -26,6 +26,7 @@ class Backend final : public QObject {
     Q_PROPERTY(qulonglong triangleCount READ triangleCount NOTIFY modelStatsChanged)
     Q_PROPERTY(QStringList supportedExtensions READ supportedExtensions CONSTANT)
     Q_PROPERTY(bool canOpenFullViewer READ canOpenFullViewer NOTIFY fileInfoChanged)
+    Q_PROPERTY(bool canOpenInBlender READ canOpenInBlender NOTIFY fileInfoChanged)
     Q_PROPERTY(bool previewVisible READ previewVisible NOTIFY previewVisibleChanged)
 
 public:
@@ -47,6 +48,7 @@ public:
     qulonglong triangleCount() const { return m_triangleCount; }
     QStringList supportedExtensions() const;
     bool canOpenFullViewer() const { return m_canOpenFullViewer; }
+    bool canOpenInBlender() const { return m_canOpenInBlender; }
     bool previewVisible() const { return m_previewVisible; }
 
     // Model loading is deferred until the window has presented its first
@@ -59,6 +61,7 @@ public:
     Q_INVOKABLE void openPath(const QString &path);
     Q_INVOKABLE bool acceptsUrl(const QUrl &url) const;
     Q_INVOKABLE void openFullViewer();
+    Q_INVOKABLE void openInBlender();
     Q_INVOKABLE void closePreview();
     Q_INVOKABLE void navigatePreview(int direction);
     Q_INVOKABLE void clearError();
@@ -107,6 +110,7 @@ private:
     QString m_pendingPath;
     QTimer m_previewIdleTimer;
     bool m_canOpenFullViewer = false;
+    bool m_canOpenInBlender = false;
     bool m_busy = false;
     bool m_modelStatsAvailable = false;
     qulonglong m_meshCount = 0;

@@ -75,6 +75,18 @@ void Backend::openFullViewer() {
     closePreview();
 }
 
+void Backend::openInBlender() {
+    if (m_sourcePath.isEmpty())
+        return;
+
+    const QString blender = QStandardPaths::findExecutable(QStringLiteral("blender"));
+    if (blender.isEmpty() || !QProcess::startDetached(blender, {m_sourcePath})) {
+        setError(QStringLiteral("Could not open the file in Blender."));
+        return;
+    }
+    closePreview();
+}
+
 void Backend::closePreview() {
     const QDBusMessage message = QDBusMessage::createMethodCall(
         QStringLiteral("org.gnome.NautilusPreviewer"),
@@ -181,6 +193,8 @@ void Backend::openPath(const QString &path) {
     clearError();
     setModelUrl({});
     m_canOpenFullViewer = suffix != QStringLiteral("blend");
+    m_canOpenInBlender = suffix == QStringLiteral("blend")
+        && !QStandardPaths::findExecutable(QStringLiteral("blender")).isEmpty();
 
     if (suffix == QStringLiteral("fbx")) {
         updateFileInfo(info.absoluteFilePath(), QStringLiteral("FBX"));

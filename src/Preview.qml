@@ -112,6 +112,13 @@ Window {
                         focusPolicy: Qt.NoFocus
                         onClicked: backend.openFullViewer()
                     }
+
+                    RailButton {
+                        text: "OPEN WITH BLENDER"
+                        visible: backend.canOpenInBlender
+                        focusPolicy: Qt.NoFocus
+                        onClicked: backend.openInBlender()
+                    }
                 }
             }
 
@@ -130,7 +137,8 @@ Window {
                     axesVisible: true
                     overlaysVisible: false
                     autoFrameOnResize: true
-                    interactive: false
+                    frameOnOrigin: true
+                    interactive: true
                 }
 
                 Rectangle {
@@ -147,17 +155,16 @@ Window {
                     // only show the spinner once a load is taking a while,
                     // so quick loads do not flash it.
                     property bool indicatorShown: false
-                    onVisibleChanged: {
-                        indicatorShown = false
-                        if (visible)
-                            indicatorTimer.restart()
-                        else
-                            indicatorTimer.stop()
-                    }
+                    onVisibleChanged: indicatorShown = false
 
+                    // Bound to visibility rather than started from
+                    // onVisibleChanged: the cover is already visible when it
+                    // is created, so that handler never fires for the first
+                    // load and the spinner would never appear.
                     Timer {
                         id: indicatorTimer
                         interval: 400
+                        running: loadingCover.visible
                         onTriggered: loadingCover.indicatorShown = true
                     }
 
