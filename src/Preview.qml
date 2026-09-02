@@ -143,13 +143,32 @@ Window {
                                    previewWindow.stageColor.g,
                                    previewWindow.stageColor.b, 0.99)
 
+                    // Most models frame within a few hundred milliseconds;
+                    // only show the spinner once a load is taking a while,
+                    // so quick loads do not flash it.
+                    property bool indicatorShown: false
+                    onVisibleChanged: {
+                        indicatorShown = false
+                        if (visible)
+                            indicatorTimer.restart()
+                        else
+                            indicatorTimer.stop()
+                    }
+
+                    Timer {
+                        id: indicatorTimer
+                        interval: 400
+                        onTriggered: loadingCover.indicatorShown = true
+                    }
+
                     Column {
                         anchors.centerIn: parent
                         spacing: 12
+                        visible: loadingCover.indicatorShown
 
                         BusyIndicator {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            running: loadingCover.visible
+                            running: loadingCover.indicatorShown
                             implicitWidth: 30
                             implicitHeight: 30
                             Material.accent: systemTheme.accentColor
