@@ -1,6 +1,6 @@
 pkgbase = oma3dviewer
 	pkgdesc = Focused GLB, glTF, FBX, and OBJ viewer built with Qt Quick 3D
-	pkgver = 0.1.0
+	pkgver = 0.1.2
 	pkgrel = 1
 	url = https://github.com/nicopellerin/oma3dviewer
 	install = oma3dviewer.install

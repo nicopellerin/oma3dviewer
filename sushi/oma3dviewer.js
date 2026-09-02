@@ -44,6 +44,42 @@ function executablePath() {
     return GLib.find_program_in_path('oma3dviewer');
 }
 
+// Mirrors previewSocketPath() in src/main.cpp.
+function previewSocketPath() {
+    const directory = GLib.get_user_runtime_dir() || GLib.get_tmp_dir();
+    return GLib.build_filenamev([directory, 'oma3dviewer-preview.sock']);
+}
+
+// Talk to an already running preview over its socket. This avoids spawning
+// a Qt process just to relay one command. Returns false when no preview is
+// listening, in which case the caller spawns the viewer.
+function sendPreviewCommand(command, path) {
+    const socketPath = previewSocketPath();
+    if (!GLib.file_test(socketPath, GLib.FileTest.EXISTS))
+        return false;
+
+    try {
+        const client = new Gio.SocketClient();
+        const connection = client.connect(
+            Gio.UnixSocketAddress.new(socketPath), null);
+        const payload = {command};
+        if (path)
+            payload.path = path;
+        const output = connection.get_output_stream();
+        output.write_all(`${JSON.stringify(payload)}\n`, null);
+        output.flush(null);
+        connection.close(null);
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+function openPreview(sourcePath) {
+    return sendPreviewCommand('open', sourcePath) ||
+        invokePreview(['--preview', sourcePath]);
+}
+
 function invokePreview(arguments_) {
     const executable = executablePath();
     if (!executable)
@@ -105,7 +141,7 @@ function schedulePreviewClose() {
         closeSourceId = 0;
         if (activeRenderers === 0) {
             restoreControllerWindow();
-            invokePreview(['--preview-close']);
+            sendPreviewCommand('close');
         }
         return GLib.SOURCE_REMOVE;
     });
@@ -158,7 +194,7 @@ var Klass = GObject.registerClass({
         this.connect('destroy', this._onDestroy.bind(this));
 
         const sourcePath = file.get_path();
-        if (!sourcePath || !invokePreview(['--preview', sourcePath])) {
+        if (!sourcePath || !openPreview(sourcePath)) {
             log('Oma3DViewer live preview requires a local model and executable.');
             this.isReady();
             return;

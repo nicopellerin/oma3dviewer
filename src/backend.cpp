@@ -15,6 +15,9 @@
 
 namespace {
 constexpr auto geometryGroup = "window";
+// How long a hidden preview process stays alive waiting for the next file
+// before it exits. Keeping it around skips the cold start on re-preview.
+constexpr int previewIdleTimeoutMs = 60 * 1000;
 
 void stopProcess(QProcess *&process) {
     if (!process)
@@ -29,8 +32,13 @@ void stopProcess(QProcess *&process) {
 }
 }
 
-Backend::Backend(bool blendPreviewEnabled, QObject *parent)
-    : QObject(parent), m_blendPreviewEnabled(blendPreviewEnabled) {}
+Backend::Backend(bool previewMode, QObject *parent)
+    : QObject(parent), m_previewMode(previewMode) {
+    m_previewIdleTimer.setSingleShot(true);
+    m_previewIdleTimer.setInterval(previewIdleTimeoutMs);
+    connect(&m_previewIdleTimer, &QTimer::timeout,
+            QCoreApplication::instance(), &QCoreApplication::quit);
+}
 
 Backend::~Backend() {
     cancelModelStatistics();
@@ -40,7 +48,7 @@ Backend::~Backend() {
 QStringList Backend::supportedExtensions() const {
     QStringList extensions{QStringLiteral("glb"), QStringLiteral("gltf"),
                            QStringLiteral("obj"), QStringLiteral("fbx")};
-    if (m_blendPreviewEnabled)
+    if (m_previewMode)
         extensions.append(QStringLiteral("blend"));
     return extensions;
 }
@@ -74,8 +82,41 @@ void Backend::closePreview() {
         QStringLiteral("org.gnome.NautilusPreviewer2"),
         QStringLiteral("Close"));
     QDBusConnection::sessionBus().send(message);
-    QTimer::singleShot(0, QCoreApplication::instance(),
-                       &QCoreApplication::quit);
+    hidePreview();
+}
+
+void Backend::showPreview() {
+    m_previewIdleTimer.stop();
+    if (m_previewVisible)
+        return;
+    m_previewVisible = true;
+    emit previewVisibleChanged();
+}
+
+void Backend::hidePreview() {
+    if (!m_previewMode) {
+        QTimer::singleShot(0, QCoreApplication::instance(),
+                           &QCoreApplication::quit);
+        return;
+    }
+    m_previewIdleTimer.start();
+    if (!m_previewVisible)
+        return;
+    m_previewVisible = false;
+    emit previewVisibleChanged();
+}
+
+void Backend::markRenderReady() {
+    if (m_renderReady)
+        return;
+    m_renderReady = true;
+    if (m_pendingPath.isEmpty())
+        return;
+    const QString path = m_pendingPath;
+    m_pendingPath.clear();
+    setBusy(false);
+    setStatusText(QStringLiteral("Ready"));
+    openPath(path);
 }
 
 void Backend::navigatePreview(int direction) {
@@ -100,6 +141,15 @@ void Backend::openFile(const QUrl &url) {
 }
 
 void Backend::openPath(const QString &path) {
+    if (!m_renderReady) {
+        // Parsing happens on the GUI thread; let the window show its first
+        // frame (and spinner) before blocking on a potentially large file.
+        m_pendingPath = path;
+        setBusy(true);
+        setStatusText(QStringLiteral("Loading…"));
+        return;
+    }
+
     const QFileInfo info(QDir::cleanPath(path));
     if (!info.exists() || !info.isFile()) {
         setError(QStringLiteral("The selected model does not exist."));
@@ -113,11 +163,17 @@ void Backend::openPath(const QString &path) {
             labels.append(extension.toUpper());
         const QString last = labels.takeLast();
         setError(QStringLiteral("Unsupported model format. %1 a %2, or %3 file.")
-            .arg(m_blendPreviewEnabled ? QStringLiteral("Preview")
+            .arg(m_previewMode ? QStringLiteral("Preview")
                                        : QStringLiteral("Open"),
                  labels.join(QStringLiteral(", ")), last));
         return;
     }
+
+    // Sushi can request the same file twice in quick succession while
+    // navigating; the model is already on screen, so do nothing.
+    if (info.absoluteFilePath() == m_sourcePath && !m_modelUrl.isEmpty()
+        && m_errorMessage.isEmpty())
+        return;
 
     cancelModelStatistics();
     cancelConversion();
@@ -145,6 +201,11 @@ void Backend::openPath(const QString &path) {
 }
 
 void Backend::startModelStatistics(const QString &sourcePath) {
+    // The preview window never shows statistics, so skip the extra parse
+    // that would otherwise compete with the loader for CPU.
+    if (m_previewMode)
+        return;
+
     const QString assimp = QStandardPaths::findExecutable(QStringLiteral("assimp"));
     if (assimp.isEmpty())
         return;

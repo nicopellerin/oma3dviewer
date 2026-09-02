@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QProcess>
 #include <QTemporaryDir>
+#include <QTimer>
 #include <QUrl>
 #include <QVariantMap>
 
@@ -25,10 +26,10 @@ class Backend final : public QObject {
     Q_PROPERTY(qulonglong triangleCount READ triangleCount NOTIFY modelStatsChanged)
     Q_PROPERTY(QStringList supportedExtensions READ supportedExtensions CONSTANT)
     Q_PROPERTY(bool canOpenFullViewer READ canOpenFullViewer NOTIFY fileInfoChanged)
+    Q_PROPERTY(bool previewVisible READ previewVisible NOTIFY previewVisibleChanged)
 
 public:
-    explicit Backend(bool blendPreviewEnabled = false,
-                     QObject *parent = nullptr);
+    explicit Backend(bool previewMode = false, QObject *parent = nullptr);
     ~Backend() override;
 
     QUrl modelUrl() const { return m_modelUrl; }
@@ -46,6 +47,13 @@ public:
     qulonglong triangleCount() const { return m_triangleCount; }
     QStringList supportedExtensions() const;
     bool canOpenFullViewer() const { return m_canOpenFullViewer; }
+    bool previewVisible() const { return m_previewVisible; }
+
+    // Model loading is deferred until the window has presented its first
+    // frame, so large files do not keep the window from appearing.
+    void markRenderReady();
+    void showPreview();
+    void hidePreview();
 
     Q_INVOKABLE void openFile(const QUrl &url);
     Q_INVOKABLE void openPath(const QString &path);
@@ -65,6 +73,7 @@ signals:
     void errorMessageChanged();
     void busyChanged();
     void modelStatsChanged();
+    void previewVisibleChanged();
 
 private:
     bool isSupportedExtension(const QString &suffix) const;
@@ -92,7 +101,11 @@ private:
     QString m_sourcePath;
     QString m_statusText = QStringLiteral("Ready");
     QString m_errorMessage;
-    bool m_blendPreviewEnabled = false;
+    bool m_previewMode = false;
+    bool m_previewVisible = true;
+    bool m_renderReady = false;
+    QString m_pendingPath;
+    QTimer m_previewIdleTimer;
     bool m_canOpenFullViewer = false;
     bool m_busy = false;
     bool m_modelStatsAvailable = false;

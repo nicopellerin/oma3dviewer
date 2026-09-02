@@ -13,6 +13,7 @@
 #include <QQmlContext>
 #include <QQmlError>
 #include <QQuickStyle>
+#include <QQuickWindow>
 #include <QStandardPaths>
 #include <QTimer>
 
@@ -57,7 +58,7 @@ int main(int argc, char *argv[]) {
   QGuiApplication app(argc, argv);
   app.setApplicationName(QStringLiteral("oma3dviewer"));
   app.setApplicationDisplayName(QStringLiteral("oma3dviewer"));
-  app.setApplicationVersion(QStringLiteral("0.1.1"));
+  app.setApplicationVersion(QStringLiteral("0.1.2"));
   app.setOrganizationName(QStringLiteral("nicopellerin"));
   app.setOrganizationDomain(QStringLiteral("nicopellerin.io"));
   app.setDesktopFileName(QStringLiteral("oma3dviewer"));
@@ -139,7 +140,7 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    const auto handlePayload = [&backend, &app](const QByteArray &payload) {
+    const auto handlePayload = [&backend](const QByteArray &payload) {
       QJsonParseError parseError;
       const QJsonDocument document =
           QJsonDocument::fromJson(payload, &parseError);
@@ -153,8 +154,9 @@ int main(int argc, char *argv[]) {
       const QJsonObject object = document.object();
       const QString command = object.value(QStringLiteral("command")).toString();
       if (command == QStringLiteral("close")) {
-        QTimer::singleShot(0, &app, &QCoreApplication::quit);
+        backend.hidePreview();
       } else if (command == QStringLiteral("open")) {
+        backend.showPreview();
         backend.openPath(object.value(QStringLiteral("path")).toString());
       }
     };
@@ -207,6 +209,24 @@ int main(int argc, char *argv[]) {
     qCritical() << "Could not load the Oma3DViewer interface; resource available:"
                 << QFile::exists(QStringLiteral(":/Main.qml"));
     return -1;
+  }
+
+  // Start loading the model only once the first frame is on screen so the
+  // window and its spinner appear before the GUI thread parses the file.
+  auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+  if (window) {
+    auto connection = std::make_shared<QMetaObject::Connection>();
+    // Queued so the load starts on the next event-loop turn, after the
+    // swap has fully completed.
+    *connection = QObject::connect(window, &QQuickWindow::frameSwapped, &backend,
+                                   [&backend, connection]() {
+      QObject::disconnect(*connection);
+      backend.markRenderReady();
+    }, Qt::QueuedConnection);
+    // Safety net in case the window is never exposed.
+    QTimer::singleShot(1000, &backend, [&backend]() { backend.markRenderReady(); });
+  } else {
+    backend.markRenderReady();
   }
 
   return app.exec();

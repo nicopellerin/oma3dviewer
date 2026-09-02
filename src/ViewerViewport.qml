@@ -11,8 +11,9 @@ Item {
     property color inkColor: "#a9b1d6"
     property color mutedColor: "#565f89"
     property color accentColor: "#7aa2f7"
-    property color gridMinorColor: Qt.rgba(mutedColor.r, mutedColor.g, mutedColor.b, 0.34)
-    property color gridMajorColor: Qt.rgba(mutedColor.r, mutedColor.g, mutedColor.b, 0.48)
+    // Neutral grays tuned for the fixed Blender-like stage color.
+    property color gridMinorColor: Qt.rgba(0.62, 0.62, 0.62, 0.30)
+    property color gridMajorColor: Qt.rgba(0.70, 0.70, 0.70, 0.50)
     // Blender's default theme axis colors. Qt Quick 3D is Y-up, so the
     // shader's internal Z line is presented as Blender's green ground axis.
     property color xAxisColor: "#ff3352"
@@ -143,14 +144,20 @@ Item {
         }
     }
 
+    // Drawn behind a transparent View3D so the stage keeps the exact theme
+    // color; a clearColor would be darkened by the ACES tonemapper.
+    Rectangle {
+        anchors.fill: parent
+        color: root.stageColor
+    }
+
     View3D {
         id: view
         anchors.fill: parent
         camera: camera
 
         environment: SceneEnvironment {
-            backgroundMode: SceneEnvironment.Color
-            clearColor: root.stageColor
+            backgroundMode: SceneEnvironment.Transparent
             antialiasingMode: SceneEnvironment.MSAA
             antialiasingQuality: SceneEnvironment.High
             specularAAEnabled: true
@@ -284,6 +291,13 @@ Item {
                 materialTimer.stop()
                 root.frameRetryCount = 0
                 root.frameReady = false
+                // RuntimeLoader emits statusChanged (and, for cached assets,
+                // boundsChanged) before sourceChanged, so a load that already
+                // finished must be re-armed here or framing never runs.
+                if (status === RuntimeLoader.Success) {
+                    root.scheduleFrame()
+                    materialTimer.restart()
+                }
             }
             onBoundsChanged: root.scheduleFrame()
             onChildrenChanged: {

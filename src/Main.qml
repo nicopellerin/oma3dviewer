@@ -20,6 +20,8 @@ ApplicationWindow {
     Material.theme: systemTheme.darkMode ? Material.Dark : Material.Light
     Material.accent: systemTheme.accentColor
 
+    readonly property color stageColor: "#3d3d3d"
+    readonly property color stageInkColor: "#e0e0e0"
     property bool gridVisible: true
     property bool axesVisible: true
     property bool dropReady: false
@@ -192,9 +194,10 @@ ApplicationWindow {
                 id: viewport
                 anchors.fill: parent
                 source: backend.modelUrl
-                stageColor: systemTheme.stageColor
-                inkColor: systemTheme.inkColor
-                mutedColor: systemTheme.mutedColor
+                // Fixed Blender-like neutral gray so the stage, grid and
+                // hints read the same on every theme, light or dark.
+                stageColor: win.stageColor
+                inkColor: win.stageInkColor
                 accentColor: systemTheme.accentColor
                 gridVisible: win.gridVisible
                 axesVisible: win.axesVisible
@@ -302,9 +305,9 @@ ApplicationWindow {
                          && win.visibleError === ""
                 spacing: 18
 
-                property color statsColor: Qt.rgba(systemTheme.inkColor.r,
-                                                    systemTheme.inkColor.g,
-                                                    systemTheme.inkColor.b, 0.48)
+                property color statsColor: Qt.rgba(win.stageInkColor.r,
+                                                    win.stageInkColor.g,
+                                                    win.stageInkColor.b, 0.48)
                 readonly property var statsLocale: Qt.locale("en_US")
 
                 function formatCount(value) {
@@ -337,7 +340,7 @@ ApplicationWindow {
                 anchors.margins: 14
                 height: errorRow.implicitHeight + 18
                 visible: win.visibleError !== ""
-                color: systemTheme.mix(systemTheme.stageColor, systemTheme.errorColor, 0.12)
+                color: systemTheme.mix(win.stageColor, systemTheme.errorColor, 0.12)
                 border.width: 1
                 border.color: systemTheme.errorColor
                 radius: 2

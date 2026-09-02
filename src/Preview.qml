@@ -13,7 +13,7 @@ Window {
     maximumWidth: 720
     minimumHeight: 480
     maximumHeight: 480
-    visible: true
+    visible: backend.previewVisible
     color: systemTheme.stageColor
     title: backend.fileName === "" ? "Oma3DViewer preview" : backend.fileName
     flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus
@@ -21,6 +21,10 @@ Window {
 
     readonly property string visibleError: backend.errorMessage !== ""
         ? backend.errorMessage : viewport.loadError
+    // Same fixed Blender-like stage as the main viewer so the model reads
+    // identically on every theme.
+    readonly property color stageColor: "#3d3d3d"
+    readonly property color stageInkColor: "#e0e0e0"
 
     // Gtk.DirectionType values used by Sushi's SelectionEvent signal.
     readonly property int selectUp: 2
@@ -119,12 +123,11 @@ Window {
                     id: viewport
                     anchors.fill: parent
                     source: backend.modelUrl
-                    stageColor: systemTheme.stageColor
-                    inkColor: systemTheme.inkColor
-                    mutedColor: systemTheme.mutedColor
+                    stageColor: previewWindow.stageColor
+                    inkColor: previewWindow.stageInkColor
                     accentColor: systemTheme.accentColor
-                    gridVisible: false
-                    axesVisible: false
+                    gridVisible: true
+                    axesVisible: true
                     overlaysVisible: false
                     autoFrameOnResize: true
                     interactive: false
@@ -136,9 +139,9 @@ Window {
                     visible: backend.busy || !viewport.frameReady
                     // Keep the covered View3D rendering so RuntimeLoader can
                     // finish calculating bounds needed by automatic framing.
-                    color: Qt.rgba(systemTheme.stageColor.r,
-                                   systemTheme.stageColor.g,
-                                   systemTheme.stageColor.b, 0.99)
+                    color: Qt.rgba(previewWindow.stageColor.r,
+                                   previewWindow.stageColor.g,
+                                   previewWindow.stageColor.b, 0.99)
 
                     Column {
                         anchors.centerIn: parent
@@ -155,7 +158,9 @@ Window {
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: backend.busy ? backend.statusText : "Loading model…"
-                            color: systemTheme.mutedColor
+                            color: Qt.rgba(previewWindow.stageInkColor.r,
+                                           previewWindow.stageInkColor.g,
+                                           previewWindow.stageInkColor.b, 0.7)
                             font.family: "JetBrainsMono Nerd Font"
                             font.pixelSize: 10
                             font.letterSpacing: 0.7
@@ -171,8 +176,8 @@ Window {
                     anchors.margins: 14
                     height: errorText.implicitHeight + 24
                     visible: previewWindow.visibleError !== ""
-                    color: systemTheme.mix(systemTheme.stageColor,
-                                                   systemTheme.errorColor, 0.14)
+                    color: systemTheme.mix(previewWindow.stageColor,
+                                           systemTheme.errorColor, 0.14)
                     border.width: 1
                     border.color: systemTheme.errorColor
                     radius: 2
@@ -182,7 +187,7 @@ Window {
                         anchors.fill: parent
                         anchors.margins: 12
                         text: previewWindow.visibleError
-                        color: systemTheme.inkColor
+                        color: previewWindow.stageInkColor
                         wrapMode: Text.Wrap
                         maximumLineCount: 3
                         elide: Text.ElideRight
