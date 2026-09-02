@@ -8,9 +8,6 @@ Omarchy theme automatically.
 
 ## Theme-aware interface
 
-Viewport, controls, borders and grid colors adapt to the current Omarchy
-theme, including light and dark variants.
-
 | Dark theme | Light theme |
 |:---:|:---:|
 | ![Oma3DViewer using a dark Omarchy theme](theme-demo-1-1.png) | ![Oma3DViewer using a light Omarchy theme](theme-demo-2-1.png) |
